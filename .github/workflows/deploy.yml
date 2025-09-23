@@ -52,10 +52,7 @@ jobs:
           -e ALLOWED_ORIGINS="${ALLOWED_ORIGINS}" \
           harchamaq-backend:${{ github.sha }} \
           python -c "import os; print('✅ Container started successfully'); print('✅ Environment variables loaded')"
-        
-        # Stop test container
-        docker stop test-container
-        docker rm test-container
+        echo "✅ Container test completed successfully"
 
     # Trivy Security Scan - Filesystem
     - name: Run Trivy filesystem scan
