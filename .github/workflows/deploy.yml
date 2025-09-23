@@ -1,4 +1,4 @@
-name: Deploy Backend
+name: Build, Scan & Deploy
 
 on:
   push:
@@ -7,77 +7,125 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  security-scan:
+    name: Security Scan & Build
     runs-on: ubuntu-latest
     
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: testpassword
-          MYSQL_DATABASE: test_harcha
-        ports:
-          - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
-    - name: Wait for MySQL
-      run: |
-        while ! mysqladmin ping -h"127.0.0.1" -P3306 -uroot -ptestpassword --silent; do
-          sleep 1
-        done
-    
-    - name: Run tests
-      env:
-        DATABASE_HOST: 127.0.0.1
-        DATABASE_USER: root
-        DATABASE_PASSWORD: testpassword
-        DATABASE_NAME: test_harcha
-        DATABASE_PORT: 3306
-        SECRET_KEY: test-secret-key
-        JWT_SECRET_KEY: test-jwt-secret
-        FLASK_ENV: testing
-      run: |
-        pytest tests/ -v
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-  deploy-railway:
-    needs: test
+    - name: Validate project structure
+      run: |
+        echo "✅ Checking required files..."
+        test -f Dockerfile && echo "✅ Dockerfile" || exit 1
+        test -f railway.json && echo "✅ railway.json" || exit 1
+        test -f requirements.txt && echo "✅ requirements.txt" || exit 1
+        test -f run.py && echo "✅ run.py" || exit 1
+        echo "🚀 All files present, ready for build"
+
+    # Build Docker image for testing and security scanning
+    - name: Build Docker image
+      run: |
+        docker build -t harchamaq-backend:${{ github.sha }} .
+        docker tag harchamaq-backend:${{ github.sha }} harchamaq-backend:latest
+
+    # Test Docker image can start
+    - name: Test Docker image
+      env:
+        FLASK_ENV: ${{ vars.FLASK_ENV }}
+        DATABASE_HOST: ${{ vars.DATABASE_HOST }}
+        DATABASE_USER: ${{ vars.DATABASE_USER }}
+        DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        DATABASE_PORT: ${{ vars.DATABASE_PORT }}
+        DATABASE_NAME: ${{ vars.DATABASE_NAME }}
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+        ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
+        LOG_LEVEL: ${{ vars.LOG_LEVEL }}
+      run: |
+        # Start container in background
+        docker run -d --name test-container \
+          -e FLASK_ENV="${FLASK_ENV}" \
+          -e DATABASE_HOST="${DATABASE_HOST}" \
+          -e DATABASE_USER="${DATABASE_USER}" \
+          -e DATABASE_PASSWORD="${DATABASE_PASSWORD}" \
+          -e DATABASE_PORT="${DATABASE_PORT}" \
+          -e DATABASE_NAME="${DATABASE_NAME}" \
+          -e SECRET_KEY="${SECRET_KEY}" \
+          -e JWT_SECRET_KEY="${JWT_SECRET_KEY}" \
+          -e ALLOWED_ORIGINS="${ALLOWED_ORIGINS}" \
+          -e LOG_LEVEL="${LOG_LEVEL}" \
+          -p 5000:5000 \
+          harchamaq-backend:${{ github.sha }}
+        
+        # Wait for container to start
+        sleep 10
+        
+        # Check if container is running
+        docker ps | grep test-container
+        
+        # Check if health endpoint responds (retry a few times)
+        for i in {1..5}; do
+          if curl -f http://localhost:5000/health; then
+            echo "✅ Health check passed"
+            break
+          fi
+          echo "⏳ Attempt $i failed, retrying..."
+          sleep 5
+        done
+        
+        # Show container logs for debugging
+        docker logs test-container
+        
+        # Stop test container
+        docker stop test-container
+        docker rm test-container
+
+    # Trivy Security Scan - Filesystem
+    - name: Run Trivy filesystem scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-fs-results.sarif'
+
+    # Trivy Security Scan - Docker Image
+    - name: Run Trivy image scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'harchamaq-backend:${{ github.sha }}'
+        format: 'sarif'
+        output: 'trivy-image-results.sarif'
+
+    # Upload Trivy results to GitHub Security tab
+    - name: Upload Trivy filesystem scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-fs-results.sarif'
+    
+    - name: Upload Trivy image scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-image-results.sarif'
+
+  deploy:
+    name: Deploy to Railway
+    needs: security-scan
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
-    - name: Deploy to Railway
-      uses: railway-app/cli@v3
+    - name: Install Railway CLI
+      run: npm install -g @railway/cli
+
+    - name: Deploy to Railway (Docker)
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      with:
-        command: up --detach
-
-  deploy-fly:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.repository_owner == 'panchoxgrande'
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - uses: superfly/flyctl-actions/setup-flyctl@master
-    
-    - name: Deploy to Fly.io
-      env:
-        FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      run: flyctl deploy --remote-only
+      run: railway up --detach

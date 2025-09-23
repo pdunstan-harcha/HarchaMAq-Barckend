@@ -1,0 +1,10 @@
+# Trivy ignore file for known false positives or accepted risks
+
+# Python base image vulnerabilities that are not exploitable in our context
+# CVE-2023-xxxx
+
+# Dependencies with known issues but no available fixes
+# Example: CVE-2024-xxxx in package xyz
+
+# Add specific CVEs to ignore here if needed
+# Format: CVE-YYYY-XXXXX

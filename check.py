@@ -10,7 +10,7 @@ def main():
     print("🚀 Railway deployment check\n")
     
     # Check essential files
-    required = ['Dockerfile', 'railway.json', 'requirements.txt', 'run.py', 'app/__init__.py']
+    required = ['Dockerfile', 'railway.json', 'requirements.txt', 'run.py', 'app/__init__.py', 'gunicorn.conf.py']
     missing = [f for f in required if not os.path.exists(f)]
     
     if missing:
@@ -32,13 +32,22 @@ def main():
         print("❌ railway.json error")
         return 1
     
-    print("\n📋 Configure these variables in Railway:")
+    print("\n📋 Required GitHub Secrets:")
+    secrets_needed = [
+        'SECRET_KEY', 'DATABASE_PASSWORD', 'JWT_SECRET_KEY', 'RAILWAY_TOKEN'
+    ]
+    for secret in secrets_needed:
+        print(f"  🔐 {secret}")
+    
+    print("\n📋 Required GitHub Variables:")
     vars_needed = [
-        'DATABASE_HOST', 'DATABASE_USER', 'DATABASE_PASSWORD', 
-        'SECRET_KEY', 'JWT_SECRET_KEY', 'FLASK_ENV=production'
+        'FLASK_ENV', 'DATABASE_HOST', 'DATABASE_USER', 'DATABASE_PORT',
+        'DATABASE_NAME', 'ALLOWED_ORIGINS', 'LOG_LEVEL'
     ]
     for var in vars_needed:
-        print(f"  • {var}")
+        print(f"  📋 {var}")
+    
+    print("\n💡 See GITHUB_SECRETS.md for detailed setup instructions")
     
     print("\n✅ Ready for Railway deployment!")
     return 0
