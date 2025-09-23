@@ -1,0 +1,16 @@
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: harcha_api_dev
+    env_file:
+      - .env.development
+    environment:
+      - FLASK_ENV=development
+    ports:
+      - "5000:5000"
+    command: ["python", "run.py"]
+    volumes:
+      - ./:/app

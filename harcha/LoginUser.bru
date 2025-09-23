@@ -1,0 +1,26 @@
+meta {
+  name: LoginUser
+  type: http
+  seq: 4
+}
+
+post {
+  url: http://127.0.0.1:5000/auth/login
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "username": "pdunstan",
+    "password": "Harcha2025*"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

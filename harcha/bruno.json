@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "harcha",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

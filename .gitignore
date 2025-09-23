@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Flask
+instance/
+.webassets-cache
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Database
+*.db
+*.sqlite3
+app.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Logs
+*.log
+logs/
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+.mypy_cache/
+
+# CSV files (data)
+*.csv
+
+# Backup files
+backup_*/

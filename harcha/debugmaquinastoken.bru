@@ -1,0 +1,19 @@
+meta {
+  name: debugmaquinastoken
+  type: http
+  seq: 8
+}
+
+get {
+  url: http://127.0.0.1:5000/maquinas/debug-jwt
+  body: none
+  auth: inherit
+}
+
+headers {
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc1ODEyMzAxOCwianRpIjoiZTQ5MjA4NzktM2I3OC00ZWQ2LTlhOTYtNDVlNDM1NDQ2MWZjIiwidHlwZSI6ImFjY2VzcyIsInN1YiI6IjE1MCIsIm5iZiI6MTc1ODEyMzAxOCwiY3NyZiI6IjU3Yzk1MTJjLWZkYWEtNDA2My05ZWVjLTRkNDE2MTk5MTRmOSIsImV4cCI6MTc1ODE0NDYxOCwidXNlcm5hbWUiOiJwZHVuc3RhbiIsInJvbCI6IkFkbWluIHN1cGVyaW9yIiwibm9tYnJlIjoiUGF0cmljaW8iLCJhcGVsbGlkb3MiOiJEdW5zdGFuIn0.SH4nbNN4YGvxu67wPrsILUhvewMW9ZSX-4EtrPhYzl0
+}
+
+settings {
+  encodeUrl: true
+}
