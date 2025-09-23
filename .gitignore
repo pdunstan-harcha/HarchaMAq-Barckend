@@ -76,3 +76,19 @@ htmlcov/
 
 # Backup files
 backup_*/
+
+# Development/deployment files to exclude
+debug.py
+hash_password.py
+separate-backend.ps1
+avanceycontexto.md
+BACKEND_SEPARATION.md
+MONOREPO_SEPARATION_GUIDE.md
+SEPARATION_CHECKLIST.md
+userpdunstan*.csv
+SELECT*.csv
+
+# Keep .env.railway as template but ignore actual secrets
+.env.development
+.env.qa
+.env.production

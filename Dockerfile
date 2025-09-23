@@ -1,30 +1,42 @@
-# Backend Dockerfile (multi-stage) for Flask API
-# Stage 1: Base image with system deps
-FROM python:3.11-slim AS base
+# Dockerfile optimizado para Railway deployment
+FROM python:3.11-slim
 
+# Configurar variables de entorno
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    FLASK_ENV=production
 
-# Install system packages (add build tools only if needed)
+# Instalar dependencias del sistema
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        curl ca-certificates \
+       build-essential \
+       default-libmysqlclient-dev \
+       pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
+# Crear directorio de trabajo
 WORKDIR /app
 
-# Leverage Docker layer caching: copy requirements first
+# Copiar y instalar dependencias Python (aprovecha cache de layers)
 COPY requirements.txt ./
 RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+    && pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copiar código de la aplicación
 COPY . .
 
-# Expose API port
-EXPOSE 5000
+# Crear usuario no-root para seguridad
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
 
-# Default command is production-ready (Gunicorn)
-# For development, override in docker-compose to `python run.py`
+# Railway usa la variable PORT dinámicamente
+EXPOSE $PORT
+
+# Healthcheck para Railway
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-5000}/health || exit 1
+
+# Comando por defecto para producción
 CMD ["gunicorn", "-c", "gunicorn.conf.py", "run:app"]

@@ -13,16 +13,25 @@ db = SQLAlchemy()
 def create_app(config_name: str | None = None) -> Flask:
     app = Flask(__name__)
     
-    # Cargar variables de entorno desde .env.development
-    env_file = '.env.development'
-    env_path = os.path.join(os.path.dirname(__file__), '..', env_file)
+    # Determinar el entorno de ejecución
+    flask_env = os.getenv('FLASK_ENV', 'development')
     
-    if os.path.exists(env_path):
-        load_dotenv(env_path, override=True)
-        print(f"Loaded environment from {env_file}")
+    # Cargar variables de entorno según el entorno
+    if flask_env == 'production':
+        # En producción (Railway), usar variables de entorno del sistema
+        # No cargar archivos .env para evitar conflictos
+        print("Running in PRODUCTION mode - using system environment variables")
     else:
-        load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
-        print("Loaded default .env file")
+        # En desarrollo, cargar archivos .env
+        env_file = '.env.development' if flask_env == 'development' else '.env'
+        env_path = os.path.join(os.path.dirname(__file__), '..', env_file)
+        
+        if os.path.exists(env_path):
+            load_dotenv(env_path, override=True)
+            print(f"Loaded environment from {env_file}")
+        else:
+            load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
+            print("Loaded default .env file")
     
     # Debug: Mostrar variables de entorno cargadas
     print("\n=== Variables de entorno cargadas ===")
