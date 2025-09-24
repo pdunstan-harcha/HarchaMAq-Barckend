@@ -106,4 +106,4 @@ jobs:
     - name: Deploy to Railway (Docker)
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      run: railway up --detach
+      run: railway up --detach --service harchaBack
