@@ -1,0 +1,7 @@
+docker-compose.yml
+docker-compose.prod.yml
+*.env.local
+*.env.development
+.env.test
+node_modules/
+.git/
