@@ -4,32 +4,16 @@ services:
   app:
     build: .
     ports:
-      - "5000:5000"
+      - "${PORT:-5000}:${PORT:-5000}"
     environment:
-      - DATABASE_HOST=db
-      - DATABASE_USER=root
-      - DATABASE_PASSWORD=rootpassword
-      - DATABASE_NAME=harchamaq_dev
-      - DATABASE_PORT=3306
-      - SECRET_KEY=dev-secret-key
-      - JWT_SECRET_KEY=dev-jwt-secret
+      - DATABASE_HOST=${DATABASE_HOST:-163.172.82.28}
+      - DATABASE_USER=${DATABASE_USER:-deve}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_NAME=${DATABASE_NAME:-APP_HARCHA_MAQUINARIA}
+      - DATABASE_PORT=${DATABASE_PORT:-3306}
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - FLASK_ENV=development
-    depends_on:
-      - db
     volumes:
       - .:/app
     command: python run.py
-
-  db:
-    image: mysql:8.0
-    environment:
-      - MYSQL_ROOT_PASSWORD=rootpassword
-      - MYSQL_DATABASE=harchamaq_dev
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./sql/estructura_tablas.sql:/docker-entrypoint-initdb.d/init.sql
-
-volumes:
-  mysql_data:
