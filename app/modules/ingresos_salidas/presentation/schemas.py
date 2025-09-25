@@ -60,33 +60,36 @@ ingreso_salida_input = ingresos_salidas_ns.model('IngresoSalidaInput', {
     'Control1': fields.Integer(description='Campo de control adicional')
 })
 
-# ✅ MODELO DE RESPUESTA mejorado
+# ✅ MODELO DE RESPUESTA actualizado para coincidir con _domain_to_dict()
 ingreso_salida_model = ingresos_salidas_ns.model('IngresoSalida', {
-    'id': fields.Integer(required=True, description='ID del registro'),
-    'codigo': fields.String(description='Código del ingreso/salida'),
-    'fechahora': fields.DateTime(description='Fecha y hora del movimiento'),
+    # Datos principales del CSV
+    'id': fields.Integer(required=True, description='ID del registro (pkIs)'),
+    'codigo': fields.String(description='Código del ingreso/salida (ID_IS)'),
+    'fechahora': fields.DateTime(description='Fecha y hora del movimiento (FECHAHORA)'),
     'ingreso_salida': fields.String(description='Tipo: INGRESO o SALIDA'),
-    'estado_maquina': fields.String(description='Estado de la máquina'),
-    'tiempo': fields.String(description='Tiempo calculado (HH:MM:SS)'),
-    'tiempo_formateado': fields.String(description='Tiempo en formato legible'),
-    'observaciones': fields.String(description='Observaciones'),
+    'tiempo': fields.String(description='Tiempo calculado en formato texto (TIEMPO)'),
+    'tiempo_formateado': fields.String(description='Tiempo en formato legible (HH:MM:SS)'),
+    'fechahora_ultimo': fields.DateTime(description='Fecha del movimiento anterior (FECHAHORA_ULTIMO)'),
+    'estado_maquina': fields.String(description='Estado/ubicación de la máquina (NUEVO ESTADO)'),
+    'observaciones': fields.String(description='Observaciones del movimiento'),
+    'usuario_id': fields.Integer(description='ID del usuario que registró (USUARIO_ID)'),
+    
+    # Información de la máquina (con JOIN)
+    'maquina_id': fields.Integer(description='ID de la máquina (pkMaquina)'),
+    'maquina': fields.String(description='Nombre completo de la máquina (MAQUINA)'),
+    'maquina_codigo': fields.String(description='Código de la máquina (ej: MB-01)'),
+    
+    # Usuario
+    'usuario_nombre': fields.String(description='Nombre del usuario'),
+    
+    # Campos adicionales para el frontend
     'editar_fecha': fields.String(description='Si fue editado (SI/NO)'),
     'fecha_editada': fields.DateTime(description='Fecha de edición'),
-    
-    # Campos del movimiento anterior
-    'movimiento_anterior_texto': fields.String(description='Descripción del movimiento anterior'),
-    'fechahora_ultimo': fields.DateTime(description='Fecha del último movimiento'),
     'puede_modificar_fecha': fields.Boolean(description='Si puede modificar la fecha'),
-    
-    # Referencias
-    'maquina_id': fields.Integer(description='ID de la máquina'),
-    'maquina_nombre': fields.String(description='Nombre de la máquina'),
-    'maquina_codigo': fields.String(description='Código de la máquina (ej: MB-01)'),
-    'usuario_id': fields.Integer(description='ID del usuario'),
-    'usuario_nombre': fields.String(description='Nombre del usuario')
+    'movimiento_anterior_texto': fields.String(description='Descripción del movimiento anterior')
 })
 
-# Modelos de paginación
+# Modelos de paginación - Actualizado para coincidir con la respuesta real
 pagination_model = ingresos_salidas_ns.model('Pagination', {
     'total': fields.Integer(required=True, description='Total de registros'),
     'page': fields.Integer(required=True, description='Página actual'),

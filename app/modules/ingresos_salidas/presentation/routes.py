@@ -30,30 +30,42 @@ update_ingreso_salida_use_case = UpdateIngresoSalidaUseCase(repo=ingresos_salida
 delete_ingreso_salida_use_case = DeleteIngresoSalidaUseCase(repo=ingresos_salidas_repository)
 
 def _domain_to_dict(is_record: IngresoSalida) -> dict:
-    """Convertir entidad de dominio a diccionario para API"""
+    """Convertir entidad de dominio a diccionario para API - Formato según CSV original"""
+    
+    # Debug logging
+    print(f"🔍 DEBUG _domain_to_dict:")
+    print(f"  - is_record.usuario_id: {is_record.usuario_id} (type: {type(is_record.usuario_id)})")
+    print(f"  - is_record.usuario: {is_record.usuario}")
+    if is_record.usuario:
+        print(f"  - is_record.usuario.id: {is_record.usuario.id} (type: {type(is_record.usuario.id)})")
+        print(f"  - is_record.usuario.usuario: {is_record.usuario.usuario}")
+    
     return {
-        'id': is_record.id,
-        'codigo': is_record.codigo,
-        'fechahora': is_record.fechahora.isoformat() if is_record.fechahora else None,
-        'ingreso_salida': is_record.ingreso_salida,
-        'estado_maquina': is_record.estado_maquina,
-        'tiempo': str(is_record.tiempo) if is_record.tiempo else None,
-        'tiempo_formateado': is_record.tiempo_formateado,
-        'observaciones': is_record.observaciones,
+        # Datos principales del CSV: pkIs, ID_IS, ID_MAQUINA, pkMaquina, FECHAHORA, INGRESO_SALIDA, etc.
+        'id': is_record.id,                                          # pkIs
+        'codigo': is_record.codigo,                                  # ID_IS
+        'fechahora': is_record.fechahora.isoformat() if is_record.fechahora else None,  # FECHAHORA
+        'ingreso_salida': is_record.ingreso_salida,                  # INGRESO_SALIDA  
+        'tiempo': str(is_record.tiempo) if is_record.tiempo else None,              # TIEMPO
+        'tiempo_formateado': is_record.tiempo_formateado,            # Tiempo legible
+        'fechahora_ultimo': is_record.fechahora_ultimo.isoformat() if is_record.fechahora_ultimo else None,  # FECHAHORA_ULTIMO
+        'estado_maquina': is_record.estado_maquina,                  # ESTADO_MAQUINA (NUEVO ESTADO)
+        'observaciones': is_record.observaciones,                    # OBSERVACIONES
+        'usuario_id': is_record.usuario.id if is_record.usuario else None,  # Usar pkUsuario en lugar de USUARIO_ID
+        
+        # Información de la máquina (con JOIN)
+        'maquina_id': is_record.maquina.id if is_record.maquina else None,           # pkMaquina
+        'maquina': is_record.maquina.nombre if is_record.maquina else None,          # MAQUINA (nombre completo)
+        'maquina_codigo': is_record.maquina.codigo if is_record.maquina else None,   # Para referencia
+        
+        # Usuario
+        'usuario_nombre': is_record.usuario.usuario if is_record.usuario else None,  # Nombre del usuario
+        
+        # Campos adicionales útiles para el frontend
         'editar_fecha': is_record.editar_fecha,
         'fecha_editada': is_record.fecha_editada.isoformat() if is_record.fecha_editada else None,
-        'fechahora_ultimo': is_record.fechahora_ultimo.isoformat() if is_record.fechahora_ultimo else None,
-        
-        # Campos adicionales del formulario
-        'movimiento_anterior_texto': is_record.movimiento_anterior_texto,
         'puede_modificar_fecha': is_record.puede_modificar_fecha,
-        
-        # Referencias básicas
-        'maquina_id': is_record.maquina.id if is_record.maquina else None,
-        'maquina_nombre': is_record.maquina.nombre if is_record.maquina else None,
-        'maquina_codigo': is_record.maquina.codigo if is_record.maquina else None,
-        'usuario_id': is_record.usuario.id if is_record.usuario else None,
-        'usuario_nombre': is_record.usuario.usuario if is_record.usuario else None
+        'movimiento_anterior_texto': is_record.movimiento_anterior_texto
     }
 
 # ✅ ENDPOINT DE MÁQUINAS DISPONIBLES - Ahora con el modelo correcto

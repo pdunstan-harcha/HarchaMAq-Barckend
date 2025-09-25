@@ -57,12 +57,16 @@ def _create_movimiento_anterior_texto(ultimo_is, maquina_nombre):
     
     return f"{tipo} - {fecha} -> {estado}"
 
-def _to_domain(is_record: SAIngresoSalida, include_relations: bool = True) -> IngresoSalida:
+def _to_domain(is_record: SAIngresoSalida, include_relations: bool = True, maquina: SAMaquina = None, usuario: SAUser = None) -> IngresoSalida:
     """Convertir SQLAlchemy a dominio - Con campos adicionales del formulario"""
     
-    # Obtener información de relaciones si es necesario
-    maquina_ref = _maq_ref(is_record.maquina) if include_relations and is_record.maquina else None
-    usuario_ref = _user_ref(is_record.usuario) if include_relations and is_record.usuario else None
+    # Usar parámetros proporcionados o cargar desde relaciones
+    maquina_obj = maquina or (is_record.maquina if include_relations else None)
+    usuario_obj = usuario or (is_record.usuario if include_relations else None)
+    
+    # Obtener información de relaciones
+    maquina_ref = _maq_ref(maquina_obj) if maquina_obj else None
+    usuario_ref = _user_ref(usuario_obj) if usuario_obj else None
     
     # Crear texto del movimiento anterior
     movimiento_anterior_texto = None
@@ -75,6 +79,15 @@ def _to_domain(is_record: SAIngresoSalida, include_relations: bool = True) -> In
     
     # Formatear tiempo
     tiempo_formateado = _format_tiempo(is_record.TIEMPO)
+    
+    # DEBUG: Verificar valores antes de crear dominio
+    print(f"🔍 DEBUG _to_domain - is_record.pkUsuario: {is_record.pkUsuario} (type: {type(is_record.pkUsuario)})")
+    print(f"🔍 DEBUG _to_domain - is_record.USUARIO_ID: {is_record.USUARIO_ID} (type: {type(is_record.USUARIO_ID)})")
+    print(f"🔍 DEBUG _to_domain - usuario_obj: {usuario_obj}")
+    if usuario_obj:
+        print(f"🔍 DEBUG _to_domain - usuario_obj.pkUsuario: {usuario_obj.pkUsuario}")
+        print(f"🔍 DEBUG _to_domain - usuario_obj.NOMBRE: {usuario_obj.NOMBRE}")
+        print(f"🔍 DEBUG _to_domain - usuario_obj.APELLIDOS: {usuario_obj.APELLIDOS}")
     
     return IngresoSalida(
         id=is_record.pkIs,
@@ -90,7 +103,7 @@ def _to_domain(is_record: SAIngresoSalida, include_relations: bool = True) -> In
         observaciones=is_record.Observaciones,
         editar_fecha=is_record.Editar_Fecha,
         fecha_editada=is_record.Fecha_Editada,
-        usuario_id=is_record.USUARIO_ID,
+        usuario_id=is_record.pkUsuario,  # Usar pkUsuario (Integer) en lugar de USUARIO_ID (String)
         
         # ✅ CAMPOS ADICIONALES
         movimiento_anterior_texto=movimiento_anterior_texto,
@@ -142,46 +155,66 @@ class SqlAlchemyIngresoSalidaRepository(IngresoSalidaRepository):
         return resultado
     
     def listar_paginado(self, params: PaginationParams) -> PaginatedResult:
-        """Listar ingresos/salidas con paginación y búsqueda"""
+        """Obtener lista paginada de ingresos/salidas con JOIN a máquinas"""
+        print(f"🔵 Listando ingresos/salidas - Página {params.page}, {params.per_page} por página")
         
-        # Query base con joins opcionales
-        query = SAIngresoSalida.query
-        
-        # Aplicar búsqueda si existe
-        if params.search:
-            search_term = f"%{params.search}%"
-            query = query.filter(
-                or_(
-                    SAIngresoSalida.ID_IS.ilike(search_term),
-                    SAIngresoSalida.ID_MAQUINA.ilike(search_term),
-                    SAIngresoSalida.INGRESO_SALIDA.ilike(search_term),
-                    SAIngresoSalida.ESTADO_MAQUINA.ilike(search_term),
-                    SAIngresoSalida.Observaciones.ilike(search_term),
-                    SAIngresoSalida.USUARIO_ID.ilike(search_term)
-                )
+        try:
+            # Query base con JOIN a máquinas y usuarios
+            query = (
+                db.session.query(SAIngresoSalida)
+                .join(SAMaquina, SAIngresoSalida.pkMaquina == SAMaquina.pkMaquina)
+                .outerjoin(SAUser, SAIngresoSalida.USUARIO_ID == SAUser.pkUsuario)
             )
-        
-        # Contar total ANTES de paginar
-        total = query.count()
-        
-        # Aplicar ordenamiento y paginación
-        items = (
-            query
-            .order_by(desc(SAIngresoSalida.FECHAHORA))
-            .offset((params.page - 1) * params.per_page)
-            .limit(params.per_page)
-            .all()
-        )
-        
-        # Convertir a dominio SIN relaciones complejas
-        ingresos_salidas_domain = [_to_domain(is_record, include_relations=False) for is_record in items]
-        
-        return PaginatedResult(
-            data=ingresos_salidas_domain,
-            total=total,
-            page=params.page,
-            per_page=params.per_page
-        )
+            
+            # Aplicar búsqueda si existe
+            if params.search:
+                search_term = f"%{params.search}%"
+                query = query.filter(
+                    or_(
+                        SAIngresoSalida.ID_IS.ilike(search_term),
+                        SAMaquina.MAQUINA.ilike(search_term),
+                        SAMaquina.CODIGO_MAQUINA.ilike(search_term),
+                        SAIngresoSalida.INGRESO_SALIDA.ilike(search_term),
+                        SAIngresoSalida.ESTADO_MAQUINA.ilike(search_term),
+                        SAIngresoSalida.Observaciones.ilike(search_term),
+                        SAUser.NOMBREUSUARIO.ilike(search_term)
+                    )
+                )
+            
+            # Ordenar por fecha descendente (más recientes primero)
+            query = query.order_by(desc(SAIngresoSalida.FECHAHORA))
+            
+            # Contar total
+            total = query.count()
+            
+            # Aplicar paginación
+            offset = (params.page - 1) * params.per_page
+            registros = query.offset(offset).limit(params.per_page).all()
+            
+            # Convertir a entidades de dominio con relaciones cargadas
+            ingresos_salidas = []
+            for record in registros:
+                # Obtener manualmente los datos relacionados
+                maquina = record.maquina if hasattr(record, 'maquina') else SAMaquina.query.get(record.pkMaquina)
+                usuario = record.usuario if hasattr(record, 'usuario') else SAUser.query.get(record.pkUsuario) if record.pkUsuario else None
+                
+                domain_entity = _to_domain(record, include_relations=True, maquina=maquina, usuario=usuario)
+                ingresos_salidas.append(domain_entity)
+            
+            print(f"🔵 Encontrados {len(ingresos_salidas)} registros de {total} total")
+            
+            return PaginatedResult(
+                data=ingresos_salidas,
+                total=total,
+                page=params.page,
+                per_page=params.per_page
+            )
+            
+        except Exception as e:
+            print(f"❌ ERROR en listar_paginado(): {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise
     
     def obtener_por_id(self, ingreso_salida_id: int) -> Optional[IngresoSalida]:
         """Obtener un ingreso/salida específico por ID"""
