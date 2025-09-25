@@ -1,5 +1,6 @@
+from urllib import response
 from flask_restx import Resource
-from flask import request
+from flask import request, make_response, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from app.security.roles import roles_required, ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_INSPECTOR, ROLE_PETROLERO, ROLE_OPERADOR
 from .api_namespace import (
@@ -19,6 +20,7 @@ from ..application.crear import CreateRecargaUseCase, CreateRecargaInput
 from ..application.actualizar import UpdateRecargaUseCase, UpdateRecargaInput
 from ..application.eliminar import DeleteRecargaUseCase, DeleteRecargaInput
 from ..domain.entity import Recarga
+from .recibo_template import render_recibo_html
 
 # Instanciar repositorio y casos de uso
 recargas_repository = SqlAlchemyRecargaRepository()
@@ -365,6 +367,30 @@ class RecargasDetail(Resource):
             traceback.print_exc()
             recargas_ns.abort(500, error=str(e))
 
+@recargas_ns.route('/<int:recarga_id>/recibo')
+@recargas_ns.doc(description='Generar recibo HTML para impresión térmica de recarga')
+class RecargaRecibo(Resource):
+
+    @recargas_ns.response(200, 'Recibo generado exitosamente')
+    @recargas_ns.response(404, 'Recarga no encontrada')
+    @recargas_ns.response(401, 'Token inválido')
+    @jwt_required()
+    @roles_required([ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_INSPECTOR, ROLE_PETROLERO, ROLE_OPERADOR])
+    def get(self, recarga_id):
+
+        try:
+            input_data = GetRecargaInput(recarga_id=recarga_id)
+            result = get_recarga_use_case.execute(input_data)
+            if not result.found:
+                recargas_ns.abort(404, error=f"Recarga {recarga_id} no encontrada")
+            recarga = result.data
+            fecha = recarga.fecha.strftime('%d-%m-%Y %H:%M') if recarga.fecha else ''
+            html = render_recibo_html(recarga, fecha)
+            response = make_response(html)
+            response.headers['Content-Type'] = 'text/html'
+            return response
+        except Exception as e:
+            recargas_ns.abort(500, error=str(e))
 
 @recargas_ns.route('/debug/sample')
 @recargas_ns.doc(description='Obtener datos de muestra para debug')
@@ -419,3 +445,6 @@ class RecargasDebug(Resource):
             import traceback
             traceback.print_exc()
             recargas_ns.abort(500, error=str(e))
+
+
+    
