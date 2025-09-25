@@ -384,6 +384,7 @@ class RecargaRecibo(Resource):
             if not result.found:
                 recargas_ns.abort(404, error=f"Recarga {recarga_id} no encontrada")
             recarga = result.data
+            print(f'Recarga: {recarga}')
             fecha = recarga.fecha.strftime('%d-%m-%Y %H:%M') if recarga.fecha else ''
             html = render_recibo_html(recarga, fecha)
             response = make_response(html)

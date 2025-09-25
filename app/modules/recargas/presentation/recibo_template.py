@@ -28,7 +28,7 @@ def render_recibo_html(recarga, fecha):
         <div class='header center'>
             <img style='height: 30px; width: auto;' src='https://harcha.cl/wp-content/uploads/2024/05/Logo-Harcha-Vectorizado_1-2048x461.webp' alt='Logo' />
             <div><strong>{fecha}</strong></div>
-            <div><strong>N°: {safe(recarga.id)}</strong></div>
+            <div><strong>N°: {safe(recarga.codigo)}</strong></div>
             <div class='datosHarcha'>
                 Harcha maquinaria SPA<br>
                 RUT 76.858.929-1<br>
@@ -40,9 +40,9 @@ def render_recibo_html(recarga, fecha):
         <h4 class='center'>ORDEN ENTREGA COMBUSTIBLES</h4>
         <table style='border-collapse: collapse; width: 100%; text-align: left;' border='1'>
             <tbody>
-                <tr><td><strong>NOMBRE:</strong></td><td>{safe(recarga.nombre)}</td></tr>
-                <tr><td><strong>RUT:</strong></td><td>{safe(recarga.rut)}</td></tr>
-                <tr><td><strong>HOROMETRO:</strong></td><td>{safe(recarga.horometro)}</td></tr>
+                <tr><td><strong>NOMBRE:</strong></td><td>{safe(recarga.usuario.usuario)}</td></tr>
+                <tr><td><strong>RUT:</strong></td><td>{safe(recarga.rut_operador)}</td></tr>
+                <tr><td><strong>HOROMETRO:</strong></td><td>{safe(recarga.odometro)}</td></tr>
                 <tr><td><strong>KILOMETRAJE:</strong></td><td>{safe(recarga.kilometros)}</td></tr>
                 <tr><td><strong>LITROS:</strong></td><td>{safe(recarga.litros)}</td></tr>
                 <tr><td><strong>CÓDIGO MÁQUINA:</strong></td><td>{safe(recarga.maquina.nombre if recarga.maquina else '')}</td></tr>
@@ -67,7 +67,7 @@ def render_recibo_html(recarga, fecha):
                     <tr>
                         <td style='width: 50%;'><strong>{safe(recarga.operador.usuario if recarga.operador else '')}</strong></td>
                         <td style='white-space: nowrap;'>&nbsp;</td>
-                        <td style='width: 50%;'><strong>{safe(recarga.nombre)}</strong></td>
+                        <td style='width: 50%;'><strong>{safe(recarga.usuario.usuario)}</strong></td>
                     </tr>
                 </tbody>
             </table>
