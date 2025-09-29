@@ -2,145 +2,110 @@ name: Build, Scan & Deploy to Google Cloud Run
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main ]
-
-# Add permissions for security scanning and OIDC for GCP auth
-permissions:
-  contents: read
-  security-events: write
-  actions: read
-  id-token: write # Required for Workload Identity Federation
-
-env:
-  PROJECT_ID: cs-poc-fdmjkp4igeq5lr1cshpjpia # Reemplaza con tu ID de proyecto de GCP
-  GCP_REGION: southamerica-east1 # Reemplaza con tu región de Cloud Run
-  SERVICE_NAME: harchaback # Nombre de tu servicio en Cloud Run
-  ARTIFACT_REGISTRY_REPO: cloud-run-images # Nombre de tu repositorio de Artifact Registry
+    branches: [ "main" ]
 
 jobs:
-  security-scan:
-    name: Security Scan & Build
+  build-and-scan:
+    env:
+      IMAGE_NAME: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ vars.ARTIFACT_REGISTRY_REPO }}/${{ vars.SERVICE_NAME }}
+    name: Build, Scan & Push Image
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: read
+      security-events: write
+      id-token: write
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Validate project structure
-      run: |
-        echo "✅ Checking required files..."
-        test -f Dockerfile && echo "✅ Dockerfile" || exit 1
-        # Removido railway.json ya que no desplegamos en Railway
-        test -f requirements.txt && echo "✅ requirements.txt" || exit 1
-        test -f run.py && echo "✅ run.py" || exit 1
-        echo "🚀 All files present, ready for build"
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: "google-github-actions/auth@v2"
+      with:
+        workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+        service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
-    # Construye la imagen Docker (se usará para escanear y luego para desplegar)
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Build Docker image
+      id: docker_build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: false # We will scan the image before pushing
+        tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+        outputs: type=docker,dest=/tmp/image.tar
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Install Trivy
       run: |
-        docker build -t harchamaq-backend:${{ github.sha }} .
-        docker tag harchamaq-backend:${{ github.sha }} harchamaq-backend:latest
+        wget https://github.com/aquasecurity/trivy/releases/download/v0.52.2/trivy_0.52.2_Linux-64bit.deb
+        sudo dpkg -i trivy_0.52.2_Linux-64bit.deb
 
-    # Test Docker image can start (without external DB connection)
-    - name: Test Docker image build
-      env:
-        FLASK_ENV: testing
-        SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
-        ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
+    - name: Load image into Docker
+      run: docker load --input /tmp/image.tar
+
+    - name: Run Trivy vulnerability scanner
       run: |
-        echo "🐳 Testing container startup..."
-        docker run --rm \
-          -e FLASK_ENV="${FLASK_ENV}" \
-          -e SECRET_KEY="${SECRET_KEY}" \
-          -e JWT_SECRET_KEY="${JWT_SECRET_KEY}" \
-          -e ALLOWED_ORIGINS="${ALLOWED_ORIGINS}" \
-          harchamaq-backend:${{ github.sha }} \
-          python -c "import os; print('✅ Container started successfully'); print('✅ Environment variables loaded')"
-        echo "✅ Container test completed successfully"
+        trivy image --format sarif --output trivy-image-results.sarif --severity HIGH,CRITICAL ${{ env.IMAGE_NAME }}:${{ github.sha }}
+      continue-on-error: true # Continue even if vulnerabilities are found, to allow for review
 
-    # Trivy Security Scan - Filesystem
-    - name: Run Trivy filesystem scan
-      uses: aquasecurity/trivy-action@master
-      continue-on-error: true
-      with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'sarif'
-        output: 'trivy-fs-results.sarif'
-
-    # Trivy Security Scan - Docker Image
-    - name: Run Trivy image scan
-      uses: aquasecurity/trivy-action@master
-      continue-on-error: true
-      with:
-        image-ref: 'harchamaq-backend:${{ github.sha }}'
-        format: 'sarif'
-        output: 'trivy-image-results.sarif'
-
-    # Upload Trivy results to GitHub Security tab (only if files exist)
-    - name: Upload Trivy filesystem scan results
+    - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v3
-      if: always() && hashFiles('trivy-fs-results.sarif') != ''
-      continue-on-error: true
+      if: always()
       with:
-        sarif_file: 'trivy-fs-results.sarif'
-        category: 'trivy-filesystem'
-    
-    - name: Upload Trivy image scan results
-      uses: github/codeql-action/upload-sarif@v3
-      if: always() && hashFiles('trivy-image-results.sarif') != ''
-      continue-on-error: true
+        sarif_file: "trivy-image-results.sarif"
+        category: "trivy-image"
+
+    - name: Login to Artifact Registry
+      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      uses: docker/login-action@v3
       with:
-        sarif_file: 'trivy-image-results.sarif'
-        category: 'trivy-image'
+        registry: ${{ env.GCP_REGION }}-docker.pkg.dev
+        username: oauth2accesstoken
+        password: ${{ steps.auth.outputs.access_token }}
+
+    - name: Push Image to Artifact Registry
+      if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      run: |
+        docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker tag ${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.IMAGE_NAME }}:latest
+        docker push ${{ env.IMAGE_NAME }}:latest
 
   deploy:
     name: Deploy to Google Cloud Run
-    needs: security-scan
+    needs: build-and-scan
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' # Solo desplegar en main
-    
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    env:
+      IMAGE_NAME: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ vars.ARTIFACT_REGISTRY_REPO }}/${{ vars.SERVICE_NAME }}
+    permissions:
+      id-token: write
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    # Autenticación con Google Cloud usando Workload Identity Federation
-    - id: 'auth'
-      uses: 'google-github-actions/auth@v2'
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: "google-github-actions/auth@v2"
       with:
-        project_id: ${{ env.PROJECT_ID }}
-        # email de la cuenta de servicio creada para GitHub Actions
-        workload_identity_provider: 'projects/510372916885/locations/global/workloadIdentityPools/github-pool/providers/gitoidc1' # Reemplaza con los tuyos
-        service_account: 'github-actions-deployer@cs-poc-fdmjkp4igeq5lr1cshpjpia.iam.gserviceaccount.com' # Reemplaza con el email de tu SA
+        workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+        service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
-    # Configurar Docker para usar Artifact Registry
-    - name: Set up Docker to use Artifact Registry
-      run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
-
-    # Construir y subir la imagen a Artifact Registry
-    - name: Build and Push Docker Image to Artifact Registry
-      run: |
-        docker build -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
-        docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-        docker tag ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }} \
-                   ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.SERVICE_NAME }}:latest
-        docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.SERVICE_NAME }}:latest
-
-    # Desplegar la imagen en Cloud Run
     - name: Deploy to Cloud Run
-      uses: google-github-actions/deploy-cloudrun@v2
+      uses: "google-github-actions/deploy-cloudrun@v2"
       with:
         service: ${{ env.SERVICE_NAME }}
         region: ${{ env.GCP_REGION }}
-        image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-        # Aquí puedes añadir otras configuraciones de Cloud Run, por ejemplo:
-        # env_vars: |
-        #   SECRET_KEY=${{ secrets.SECRET_KEY }}
-        #   JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
-        #   ALLOWED_ORIGINS=${{ vars.ALLOWED_ORIGINS }}
-        #   DATABASE_URL=${{ secrets.DATABASE_URL }}
-        # no_traffic: true # Si quieres un despliegue azul/verde
-
+        image: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        env_vars: |
+          FLASK_ENV=production
+          ALLOWED_ORIGINS=${{ vars.ALLOWED_ORIGINS }}
+        secrets: |
+          SECRET_KEY=SECRET_KEY:latest
+          JWT_SECRET_KEY=JWT_SECRET_KEY:latest
+          DATABASE_URL=DATABASE_URL:latest
