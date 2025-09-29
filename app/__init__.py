@@ -33,17 +33,9 @@ def create_app(config_name: str | None = None) -> Flask:
             load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
             print("Loaded default .env file")
     
-    # Debug: Mostrar variables de entorno cargadas
-    print("\n=== Variables de entorno cargadas ===")
-    for var in ['DATABASE_USER', 'DATABASE_HOST', 'DATABASE_PORT', 'DATABASE_NAME', 'FLASK_ENV']:
-        print(f"{var}: {os.getenv(var, 'No definida')}")
-    print("=================================\n")
-    
-    # Configuración básica
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
-    
-    # ✅ Configuración JWT COMPLETA
-    app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "your-secret-string")
+    # Configuración de secretos y JWT (deben venir del entorno en producción)
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+    app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY")
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = datetime.timedelta(hours=6)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = datetime.timedelta(days=30)
     jwt = JWTManager(app)
@@ -57,21 +49,29 @@ def create_app(config_name: str | None = None) -> Flask:
         CORS(app)
 
     # Configuración de base de datos
-    db_user = os.getenv('DATABASE_USER')
-    db_password = os.getenv('DATABASE_PASSWORD')
-    db_host = os.getenv('DATABASE_HOST')
-    db_port = os.getenv('DATABASE_PORT')
-    db_name = os.getenv('DATABASE_NAME')
-    
-    db_uri_debug = f'mysql+mysqlconnector://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}'
-    app.config['SQLALCHEMY_DATABASE_URI'] = db_uri_debug
+    if flask_env == 'production':
+        # En producción, usamos la URL completa que nos pasa Cloud Run
+        db_uri = os.getenv('DATABASE_URL')
+        # Google Cloud SQL a veces da una URL con 'mysql://'. SQLAlchemy prefiere 'mysql+mysqlconnector://'
+        if db_uri and db_uri.startswith("mysql://"):
+            db_uri = db_uri.replace("mysql://", "mysql+mysqlconnector://", 1)
+        app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+        print("INFO: Configurando base de datos desde DATABASE_URL para producción.")
+    else:
+        # Para desarrollo, mantenemos la configuración original desde .env
+        db_user = os.getenv('DATABASE_USER')
+        db_password = os.getenv('DATABASE_PASSWORD')
+        db_host = os.getenv('DATABASE_HOST')
+        db_port = os.getenv('DATABASE_PORT')
+        db_name = os.getenv('DATABASE_NAME')
+        app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+mysqlconnector://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}'
+        print(f"INFO: Conectando a base de datos de desarrollo.")
+
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         'pool_pre_ping': True,
         'pool_recycle': 300,
     }
-    
-    print(f"Conectando a MySQL en: mysql+mysqlconnector://{db_user}:*****@{db_host}:{db_port}/{db_name}")
     
     # Inicializar extensiones
     db.init_app(app)
