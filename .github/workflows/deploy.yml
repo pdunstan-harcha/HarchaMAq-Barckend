@@ -113,7 +113,7 @@ jobs:
       with:
         project_id: ${{ env.PROJECT_ID }}
         # email de la cuenta de servicio creada para GitHub Actions
-        workload_identity_provider: 'projects/510372916885/locations/global/workloadIdentityPools/POOL_ID/providers/PROVIDER_ID' # Reemplaza con los tuyos
+        workload_identity_provider: 'projects/510372916885/locations/global/workloadIdentityPools/github-pool/providers/gitoidc1' # Reemplaza con los tuyos
         service_account: 'github-actions-deployer@cs-poc-fdmjkp4igeq5lr1cshpjpia.iam.gserviceaccount.com' # Reemplaza con el email de tu SA
 
     # Configurar Docker para usar Artifact Registry
