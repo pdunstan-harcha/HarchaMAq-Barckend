@@ -6,10 +6,14 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  GCP_REGION: southamerica-east1
+  SERVICE_NAME: harchaback
+  ARTIFACT_REGISTRY_REPO: cloud-run-source-deploy
+  IMAGE_NAME: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPO }}/${{ env.SERVICE_NAME }}
+
 jobs:
   build-and-scan:
-    env:
-      IMAGE_NAME: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ vars.ARTIFACT_REGISTRY_REPO }}/${{ vars.SERVICE_NAME }}
     name: Build, Scan & Push Image
     runs-on: ubuntu-latest
     permissions:
@@ -36,7 +40,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        push: false # We will scan the image before pushing
+        push: false
         tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
         outputs: type=docker,dest=/tmp/image.tar
         cache-from: type=gha
@@ -53,7 +57,7 @@ jobs:
     - name: Run Trivy vulnerability scanner
       run: |
         trivy image --format sarif --output trivy-image-results.sarif --severity HIGH,CRITICAL ${{ env.IMAGE_NAME }}:${{ github.sha }}
-      continue-on-error: true # Continue even if vulnerabilities are found, to allow for review
+      continue-on-error: true
 
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v3
@@ -82,8 +86,7 @@ jobs:
     needs: build-and-scan
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    env:
-      IMAGE_NAME: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ vars.ARTIFACT_REGISTRY_REPO }}/${{ vars.SERVICE_NAME }}
+
     permissions:
       id-token: write
 
