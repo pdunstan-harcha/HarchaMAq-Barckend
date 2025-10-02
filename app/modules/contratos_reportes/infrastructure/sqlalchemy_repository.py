@@ -1,6 +1,13 @@
 from typing import Sequence, Tuple
 from sqlalchemy.orm import joinedload
-from app.models import ContratoReporte as SAContratoReporte, Maquina as SAMaquina, User as SAUser, Contrato as SAContrato
+from app.models import (
+    ContratoReporte as SAContratoReporte,
+    Maquina as SAMaquina,
+    User as SAUser,
+    Contrato as SAContrato,
+    Obra as SAObra,
+    Cliente as SACliente
+)
 from app import db
 from ..domain.entity import ContratoReporte
 from ..domain.refs import ContratoRef, MaquinaRef, UsuarioRef
@@ -86,54 +93,112 @@ class SqlAlchemyContratoReporteRepository(ContratoReporteRepository):
         )
         return [_to_domain(row) for row in rows], page, total_pages, total_records
 
-    def create(self, payload:dict) -> ContratoReporte:
+    def create(self, payload: dict) -> ContratoReporte:
+        # ✅ PASO 1: Obtener datos relacionados vía JOINs
+
+        # Obtener máquina
+        pk_maquina = payload.get("pkMaquina")
+        maquina = SAMaquina.query.get(pk_maquina) if pk_maquina else None
+
+        # Obtener contrato con sus relaciones
+        pk_contrato = payload.get("pkContrato")
+        contrato = None
+        if pk_contrato:
+            contrato = (
+                SAContrato.query
+                .options(
+                    joinedload(SAContrato.obra),
+                    joinedload(SAContrato.cliente)
+                )
+                .filter(SAContrato.pkContrato == pk_contrato)
+                .first()
+            )
+
+        # Obtener usuario
+        pk_usuario = payload.get("pkUsuario")
+        usuario = SAUser.query.get(pk_usuario) if pk_usuario else None
+
+        # ✅ PASO 2: Mapear payload del frontend a campos de BD
+        # Mapeo de nombres del frontend → BD
+        fecha_reporte = payload.get("FECHA_REPORTE") or payload.get("FECHAHORA_INICIO")
+        trabajo_realizado = payload.get("TRABAJO_REALIZADO") or payload.get("Descripcion")
+        observaciones = payload.get("OBSERVACIONES") or payload.get("Observaciones")
+        incidente = payload.get("INCIDENTE") or payload.get("Reporte_Pane")
+        km_inicial = payload.get("KM_INICIAL") or payload.get("KM_INICIO")
+        estado_reporte = payload.get("ESTADO_REPORTE") or payload.get("Estado_Reporte", "Correcto")
+
+        # ✅ PASO 3: Crear reporte con datos automáticos + payload
         report = SAContratoReporte(
             ID_REPORTE=payload.get("ID_REPORTE"),
-            ID2_REPORTE=payload.get("ID2_REPORTE", 999),
-            ID_CONTRATO=payload.get("ID_CONTRATO", "99"),
-            pkContrato=payload.get("pkContrato", 99),
-            ID_MAQUINA=payload.get("ID_MAQUINA", "m000099"),
-            pkMaquina=payload.get("pkMaquina", 99),
-            FECHAHORA_INICIO=payload.get("FECHAHORA_INICIO"),
-            USUARIO_ID=payload.get("USUARIO_ID", "usuario_test"),
-            pkUsuario=payload.get("pkUsuario", 1),
-            ODOMETRO_INICIAL=payload.get("ODOMETRO_INICIAL", 1000),
-            ODOMETRO_FINAL=payload.get("ODOMETRO_FINAL", 1010),
-            HORAS_TRABAJADAS=payload.get("HORAS_TRABAJADAS", 8),
-            Descripcion=payload.get("Descripcion"),
-            Observaciones=payload.get("Observaciones"),
-            FOTO1=payload.get("FOTO1"),
-            FOTO2=payload.get("FOTO2"),
-            CONTRATO_TXT=payload.get("CONTRATO_TXT"),
-            CLIENTE_TXT=payload.get("CLIENTE_TXT"),
-            MAQUINA_TXT=payload.get("MAQUINA_TXT"),
-            USUARIO_TXT=payload.get("USUARIO_TXT"),
-            HORAS_MINIMAS=payload.get("HORAS_MINIMAS", 8),
-            FECHAHORA_FIN=payload.get("FECHAHORA_FIN"),
-            OBRA_TXT=payload.get("OBRA_TXT"),
+
+            # Datos de la máquina (automáticos vía JOIN)
+            pkMaquina=pk_maquina,
+            ID_MAQUINA=maquina.ID_MAQUINA if maquina else None,
+            MAQUINA_TXT=maquina.MAQUINA if maquina else payload.get("MAQUINA"),
+            MAQUINA_TIPO=getattr(maquina, "TIPO", None) if maquina else None,
+            MAQUINA_MARCA=maquina.MARCA if maquina else None,
+            MAQUINA_MODELO=maquina.MODELO if maquina else None,
+
+            # Datos del contrato (automáticos vía JOIN)
+            pkContrato=pk_contrato,
+            ID_CONTRATO=contrato.ID_CONTRATO if contrato else None,
+            CONTRATO_TXT=contrato.CONTRATO if contrato else payload.get("CONTRATO"),
+            CLIENTE_TXT=contrato.cliente.CLIENTE if (contrato and contrato.cliente) else None,
+            OBRA_TXT=contrato.obra.OBRA if (contrato and contrato.obra) else None,
+
+            # Datos del usuario (automáticos vía JOIN)
+            pkUsuario=pk_usuario,
+            USUARIO_ID=usuario.USUARIO_ID if usuario else None,
+            USUARIO_TXT=f"{usuario.NOMBRE} {usuario.APELLIDOS}".strip() if usuario else payload.get("USUARIO"),
+
+            # Datos del reporte (del payload)
+            FECHAHORA_INICIO=fecha_reporte,
+            ODOMETRO_INICIAL=payload.get("ODOMETRO_INICIAL"),
+            ODOMETRO_FINAL=payload.get("ODOMETRO_FINAL"),
+            HORAS_TRABAJADAS=payload.get("HORAS_TRABAJADAS"),
+            HORAS_MINIMAS=payload.get("HORAS_MINIMAS"),
+            KM_INICIO=km_inicial,
             KM_FINAL=payload.get("KM_FINAL"),
             KILOMETROS=payload.get("KILOMETROS"),
+            Descripcion=trabajo_realizado,
+            Observaciones=observaciones,
+            Reporte_Pane=incidente,
+            Estado_Reporte=estado_reporte,
+            FOTO1=payload.get("FOTO1"),
+            FOTO2=payload.get("FOTO2"),
+
+            # Campos opcionales
+            ID2_REPORTE=payload.get("ID2_REPORTE"),
+            FECHAHORA_FIN=payload.get("FECHAHORA_FIN"),
             MT3=payload.get("MT3"),
             VUELTAS=payload.get("VUELTAS"),
-            KM_INICIO=payload.get("KM_INICIO"),
-            MAQUINA_TIPO=payload.get("MAQUINA_TIPO"),
-            MAQUINA_MARCA=payload.get("MAQUINA_MARCA"),
-            MAQUINA_MODELO=payload.get("MAQUINA_MODELO"),
             HORA_INI=payload.get("HORA_INI"),
             HORA_FIN=payload.get("HORA_FIN"),
             Control=payload.get("Control", 0),
             PDF_Reporte=payload.get("PDF_Reporte"),
-            Estado_Reporte=payload.get("Estado_Reporte"),
-            ID3_REPORTE=payload.get("ID3_REPORTE", 999),
-            Reporte_Pane=payload.get("Reporte_Pane"),
+            ID3_REPORTE=payload.get("ID3_REPORTE"),
             Estado_Pane=payload.get("Estado_Pane"),
-            USUARIO_ID_UltimaModificacion=payload.get("USUARIO_ID_UltimaModificacion"),
-            pkUsuario_UltimaModificacion=payload.get("pkUsuario_UltimaModificacion", 1)
+            USUARIO_ID_UltimaModificacion=usuario.USUARIO_ID if usuario else None,
+            pkUsuario_UltimaModificacion=pk_usuario
         )
+
         db.session.add(report)
         db.session.commit()
         db.session.refresh(report)
-        return _to_domain(report)
+
+        # Recargar con relaciones para el _to_domain
+        report_with_relations = (
+            SAContratoReporte.query
+            .options(
+                joinedload(SAContratoReporte.contrato),
+                joinedload(SAContratoReporte.maquina),
+                joinedload(SAContratoReporte.usuario),
+            )
+            .filter(SAContratoReporte.pkReporte == report.pkReporte)
+            .first()
+        )
+
+        return _to_domain(report_with_relations)
 
     def obtener_por_id(self, reporte_id: int) -> ContratoReporte | None:
         row = (

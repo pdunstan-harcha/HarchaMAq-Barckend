@@ -90,6 +90,11 @@ class Contrato(db.Model):
     FECHA_INICIO = db.Column(db.DateTime)
     Estado = db.Column(db.String(255))
 
+    # ✅ Relaciones
+    maquina = db.relationship("Maquina", foreign_keys=[pkMaquina])
+    cliente = db.relationship("Cliente", foreign_keys=[pkCliente])
+    obra = db.relationship("Obra", foreign_keys=[pkObra])
+
 
 class MaquinaIngresoSalida(db.Model):
     __tablename__ = "MAQUINAS_INGRESOS_SALIDAS"
