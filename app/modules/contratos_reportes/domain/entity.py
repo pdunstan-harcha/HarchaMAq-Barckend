@@ -33,7 +33,7 @@ class ContratoReporte:
     cliente_txt: Optional[str] = None
 
     # Campos adicionales
-    fechahora_fin: Optional[datetime] = None
+    fechahora_fin: Optional[str] = None  # Es String en la BD
     mt3: Optional[int] = None
     vueltas: Optional[int] = None
     hora_ini: Optional[str] = None

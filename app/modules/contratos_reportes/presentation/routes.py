@@ -91,7 +91,7 @@ class ContratoReporteList(Resource):
                 "CLIENTE_TXT": r.cliente_txt,
 
                 # Campos adicionales
-                "FECHAHORA_FIN": r.fechahora_fin.isoformat() if r.fechahora_fin else None,
+                "FECHAHORA_FIN": r.fechahora_fin,
                 "MT3": r.mt3,
                 "VUELTAS": r.vueltas,
                 "HORA_INI": r.hora_ini,
@@ -188,7 +188,7 @@ class ContratoReporteDetail(Resource):
             "CLIENTE_TXT": r.cliente_txt,
 
             # Campos adicionales
-            "FECHAHORA_FIN": r.fechahora_fin.isoformat() if r.fechahora_fin else None,
+            "FECHAHORA_FIN": r.fechahora_fin,
             "MT3": r.mt3,
             "VUELTAS": r.vueltas,
             "HORA_INI": r.hora_ini,

@@ -25,7 +25,7 @@ contrato_reporte_model = contratos_reportes_ns.model('ContratoReporte', {
     'pkReporte': fields.Integer(required=True, description='ID del reporte'),
     'ID_REPORTE': fields.String(required=True, description='Código del reporte'),
     'FECHAHORA_INICIO': fields.DateTime(description='Fecha y hora de inicio'),
-    'FECHAHORA_FIN': fields.DateTime(description='Fecha y hora de fin'),
+    'FECHAHORA_FIN': fields.String(description='Fecha y hora de fin'),
     'Descripcion': fields.String(description='Descripción del reporte'),
     'MAQUINA_TXT': fields.String(description='Texto de máquina'),
     'CONTRATO_TXT': fields.String(description='Texto del contrato'),
