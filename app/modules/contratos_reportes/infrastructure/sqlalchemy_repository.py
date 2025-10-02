@@ -14,12 +14,14 @@ from ..domain.refs import ContratoRef, MaquinaRef, UsuarioRef
 from ..domain.repository import ContratoReporteRepository
 
 
-def _contrato_ref(contrato: SAContrato | None) -> ContratoRef | None:
+def _contrato_ref(contrato: SAContrato | None, obra_txt: str = None, cliente_txt: str = None) -> ContratoRef | None:
     if not contrato:
         return None
     return ContratoRef(
         id=contrato.pkContrato,
         nombre=contrato.CONTRATO,
+        obra_txt=obra_txt,
+        cliente_txt=cliente_txt,
     )
 
 
@@ -50,7 +52,48 @@ def _to_domain(row: SAContratoReporte) -> ContratoReporte:
         maquina_txt=row.MAQUINA_TXT,
         contrato_txt=row.CONTRATO_TXT,
         usuario_txt=row.USUARIO_TXT,
-        contrato=_contrato_ref(getattr(row, "contrato", None)),
+
+        # Campos de odómetro y horas
+        odometro_inicial=row.ODOMETRO_INICIAL,
+        odometro_final=row.ODOMETRO_FINAL,
+        horas_trabajadas=row.HORAS_TRABAJADAS,
+        horas_minimas=row.HORAS_MINIMAS,
+
+        # Campos de kilómetros
+        km_inicio=row.KM_INICIO,
+        km_final=row.KM_FINAL,
+        kilometros=row.KILOMETROS,
+
+        # Otros campos importantes
+        observaciones=row.Observaciones,
+        reporte_pane=row.Reporte_Pane,
+        estado_reporte=row.Estado_Reporte,
+        obra_txt=row.OBRA_TXT,
+        cliente_txt=row.CLIENTE_TXT,
+
+        # Campos adicionales
+        fechahora_fin=row.FECHAHORA_FIN,
+        mt3=row.MT3,
+        vueltas=row.VUELTAS,
+        hora_ini=row.HORA_INI,
+        hora_fin=row.HORA_FIN,
+        foto1=row.FOTO1,
+        foto2=row.FOTO2,
+
+        # Campos de máquina
+        maquina_tipo=row.MAQUINA_TIPO,
+        maquina_marca=row.MAQUINA_MARCA,
+        maquina_modelo=row.MAQUINA_MODELO,
+        id_maquina=row.ID_MAQUINA,
+
+        # Campos de contrato
+        id_contrato=row.ID_CONTRATO,
+
+        # Campos de usuario
+        usuario_id=row.USUARIO_ID,
+
+        # Referencias
+        contrato=_contrato_ref(getattr(row, "contrato", None), row.OBRA_TXT, row.CLIENTE_TXT),
         maquina=_maquina_ref(getattr(row, "maquina", None)),
         usuario=_usuario_ref(getattr(row, "usuario", None)),
     )

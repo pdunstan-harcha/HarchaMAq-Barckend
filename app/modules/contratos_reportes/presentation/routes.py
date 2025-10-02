@@ -71,7 +71,48 @@ class ContratoReporteList(Resource):
                 "MAQUINA_TXT": r.maquina_txt,
                 "CONTRATO_TXT": r.contrato_txt,
                 "USUARIO_TXT": r.usuario_txt,
-                "contrato": ({"id": r.contrato.id, "nombre": r.contrato.nombre}
+
+                # Campos de odómetro y horas
+                "ODOMETRO_INICIAL": r.odometro_inicial,
+                "ODOMETRO_FINAL": r.odometro_final,
+                "HORAS_TRABAJADAS": r.horas_trabajadas,
+                "HORAS_MINIMAS": r.horas_minimas,
+
+                # Campos de kilómetros
+                "KM_INICIO": r.km_inicio,
+                "KM_FINAL": r.km_final,
+                "KILOMETROS": r.kilometros,
+
+                # Otros campos importantes
+                "Observaciones": r.observaciones,
+                "Reporte_Pane": r.reporte_pane,
+                "Estado_Reporte": r.estado_reporte,
+                "OBRA_TXT": r.obra_txt,
+                "CLIENTE_TXT": r.cliente_txt,
+
+                # Campos adicionales
+                "FECHAHORA_FIN": r.fechahora_fin.isoformat() if r.fechahora_fin else None,
+                "MT3": r.mt3,
+                "VUELTAS": r.vueltas,
+                "HORA_INI": r.hora_ini,
+                "HORA_FIN": r.hora_fin,
+                "FOTO1": r.foto1,
+                "FOTO2": r.foto2,
+
+                # Campos de máquina
+                "MAQUINA_TIPO": r.maquina_tipo,
+                "MAQUINA_MARCA": r.maquina_marca,
+                "MAQUINA_MODELO": r.maquina_modelo,
+                "ID_MAQUINA": r.id_maquina,
+
+                # Campos de contrato
+                "ID_CONTRATO": r.id_contrato,
+
+                # Campos de usuario
+                "USUARIO_ID": r.usuario_id,
+
+                # Referencias
+                "contrato": ({"id": r.contrato.id, "nombre": r.contrato.nombre, "obra_txt": r.contrato.obra_txt, "cliente_txt": r.contrato.cliente_txt}
                              if r.contrato else None),
                 "maquina": ({"id": r.maquina.id, "nombre": r.maquina.nombre}
                             if r.maquina else None),
@@ -127,7 +168,48 @@ class ContratoReporteDetail(Resource):
             "MAQUINA_TXT": r.maquina_txt,
             "CONTRATO_TXT": r.contrato_txt,
             "USUARIO_TXT": r.usuario_txt,
-            "contrato": ({"id": r.contrato.id, "nombre": r.contrato.nombre}
+
+            # Campos de odómetro y horas
+            "ODOMETRO_INICIAL": r.odometro_inicial,
+            "ODOMETRO_FINAL": r.odometro_final,
+            "HORAS_TRABAJADAS": r.horas_trabajadas,
+            "HORAS_MINIMAS": r.horas_minimas,
+
+            # Campos de kilómetros
+            "KM_INICIO": r.km_inicio,
+            "KM_FINAL": r.km_final,
+            "KILOMETROS": r.kilometros,
+
+            # Otros campos importantes
+            "Observaciones": r.observaciones,
+            "Reporte_Pane": r.reporte_pane,
+            "Estado_Reporte": r.estado_reporte,
+            "OBRA_TXT": r.obra_txt,
+            "CLIENTE_TXT": r.cliente_txt,
+
+            # Campos adicionales
+            "FECHAHORA_FIN": r.fechahora_fin.isoformat() if r.fechahora_fin else None,
+            "MT3": r.mt3,
+            "VUELTAS": r.vueltas,
+            "HORA_INI": r.hora_ini,
+            "HORA_FIN": r.hora_fin,
+            "FOTO1": r.foto1,
+            "FOTO2": r.foto2,
+
+            # Campos de máquina
+            "MAQUINA_TIPO": r.maquina_tipo,
+            "MAQUINA_MARCA": r.maquina_marca,
+            "MAQUINA_MODELO": r.maquina_modelo,
+            "ID_MAQUINA": r.id_maquina,
+
+            # Campos de contrato
+            "ID_CONTRATO": r.id_contrato,
+
+            # Campos de usuario
+            "USUARIO_ID": r.usuario_id,
+
+            # Referencias
+            "contrato": ({"id": r.contrato.id, "nombre": r.contrato.nombre, "obra_txt": r.contrato.obra_txt, "cliente_txt": r.contrato.cliente_txt}
                          if r.contrato else None),
             "maquina": ({"id": r.maquina.id, "nombre": r.maquina.nombre}
                         if r.maquina else None),
