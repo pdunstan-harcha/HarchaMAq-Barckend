@@ -48,6 +48,12 @@ class Maquina(db.Model):
     MODELO = db.Column(db.String(255))
     PATENTE = db.Column(db.String(255))
     ESTADO = db.Column(db.String(255))
+    HR_Actual = db.Column(db.Integer)
+    KM_Actual = db.Column(db.Integer)
+    pkUltima_recarga = db.Column(db.Integer, db.ForeignKey("RECARGAS_COMBUSTIBLE.pkRecarga"))
+    ID_Ultima_Recarga = db.Column(db.String(16))
+    Litros_Ultima = db.Column(db.Integer)
+    Fecha_Ultima = db.Column(db.DateTime)
 
     # Relación a los usuarios (operadores) de esta máquina
     operadores = db.relationship(
