@@ -27,32 +27,35 @@ def render_recibo_html(recarga, fecha):
             body {{ font-family: 'Arial', sans-serif; font-size: 9px; margin: 0; padding: 0; width: 100%; }}
             .receipt {{ width: 50mm; max-width: 100%; margin: 0 auto; padding: 5px; }}
             .center {{ text-align: center; }}
-            .header {{ margin-bottom: 8px; }}
+            .header {{ margin-bottom: 5px; }}
             .header img {{ width: 50px; height: auto; margin-bottom: 3px; }}
-            .company-info {{ font-size: 8px; line-height: 1.3; margin-bottom: 5px; }}
-            h4 {{ margin: 8px 0; font-size: 10px; }}
-            table {{ border-collapse: collapse; width: 100%; text-align: left; margin-bottom: 8px; }}
+            .company-info {{ font-size: 8px; line-height: 1.4; margin: 5px 0; }}
+            h4 {{ margin: 5px 0; font-size: 10px; font-weight: bold; }}
+            table {{ border-collapse: collapse; width: 100%; text-align: left; margin-bottom: 5px; }}
             table.data-table td {{ padding: 2px 4px; border: 1px solid #000; font-size: 8px; }}
-            table.data-table td:first-child {{ font-weight: bold; width: 45%; }}
-            .obs-section {{ margin: 8px 0; }}
-            .obs-section td {{ padding: 2px 0; font-size: 8px; }}
-            .signature {{ margin-top: 10px; border-top: 1px solid #000; padding-top: 3px; font-size: 8px; }}
-            .signature-table td {{ padding: 2px; }}
+            table.data-table td:first-child {{ font-weight: bold; width: 40%; }}
+            .obs-label {{ font-weight: bold; font-size: 8px; margin: 5px 0 2px 0; }}
+            .obs-text {{ font-size: 8px; margin-bottom: 8px; }}
+            .signatures {{ margin-top: 10px; font-size: 8px; }}
+            .sig-line {{ border-top: 1px solid #000; margin-top: 15px; padding-top: 2px; }}
+            .sig-row {{ display: flex; justify-content: space-between; margin-top: 3px; }}
+            .sig-col {{ width: 48%; }}
         </style>
     </head>
     <body>
     <div class='receipt'>
         <div class='header center'>
             <img src='https://harcha.cl/wp-content/uploads/2024/05/Logo-Harcha-Vectorizado_1-2048x461.webp' alt='Logo Harcha' />
-            <div style='font-size: 9px; margin: 3px 0;'><strong>{fecha}</strong></div>
-            <div style='font-size: 9px; margin: 3px 0;'><strong>N: {safe(recarga.codigo)}</strong></div>
-            <div class='company-info'>
-                Harcha maquinaria SPA<br>
-                RUT 76.858.929-1<br>
-                Calle de Servicio Oriente N 700<br>
-                Ruta 5 Sur Km. 832 fono 632461336<br>
-                Comuna Los Lagos
-            </div>
+            <div style='font-size: 9px; margin: 2px 0;'><strong>{fecha}</strong></div>
+            <div style='font-size: 9px; margin: 2px 0;'><strong>Recarga: {safe(recarga.codigo)}</strong></div>
+        </div>
+        
+        <div class='company-info center'>
+            Harcha maquinaria SPA<br>
+            RUT 76.858.929-1<br>
+            Calle de Servicio Oriente N 700<br>
+            Ruta 5 Sur Km. 832 fono 632461336<br>
+            Comuna Los Lagos
         </div>
         
         <h4 class='center'>ORDEN ENTREGA COMBUSTIBLES</h4>
@@ -70,27 +73,21 @@ def render_recibo_html(recarga, fecha):
             </tbody>
         </table>
         
-        <table class='obs-section'>
-            <tbody>
-                <tr><td><strong>Observaciones:</strong></td></tr>
-                <tr><td>{remove_tildes(safe(recarga.observaciones))}</td></tr>
-            </tbody>
-        </table>
+        <div class='obs-label'>Observaciones:</div>
+        <div class='obs-text'>{remove_tildes(safe(recarga.observaciones))}</div>
         
-        <table class='signature-table'>
-            <tbody>
-                <tr>
-                    <td class='signature' style='width: 48%;'>Firma operador:</td>
-                    <td style='width: 4%;'>&nbsp;</td>
-                    <td class='signature' style='width: 48%;'>Firma encargado reparto:</td>
-                </tr>
-                <tr>
-                    <td><strong>{remove_tildes(safe(recarga.operador.usuario if recarga.operador else ''))}</strong></td>
-                    <td>&nbsp;</td>
-                    <td><strong>{remove_tildes(safe(recarga.usuario.usuario))}</strong></td>
-                </tr>
-            </tbody>
-        </table>
+        <div class='signatures'>
+            <div style='display: flex; justify-content: space-between;'>
+                <div style='width: 48%;'>
+                    <div class='sig-line'>Firma operador:</div>
+                    <div style='margin-top: 2px;'><strong>{remove_tildes(safe(recarga.operador.usuario if recarga.operador else ''))}</strong></div>
+                </div>
+                <div style='width: 48%;'>
+                    <div class='sig-line'>Firma encargado reparto:</div>
+                    <div style='margin-top: 2px;'><strong>{remove_tildes(safe(recarga.usuario.usuario))}</strong></div>
+                </div>
+            </div>
+        </div>
     </div>
     </body>
     </html>
