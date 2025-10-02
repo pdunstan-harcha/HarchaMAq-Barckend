@@ -31,6 +31,15 @@ def _domain_to_dict(maquina: MaquinaDomain) -> dict:
         'PATENTE': maquina.patente,
         'ESTADO': maquina.estado,
         'ID_MAQUINA': maquina.id_maquina,
+
+        # ✅ NUEVO - Datos de última recarga
+        'HR_Actual': maquina.hr_actual,
+        'KM_Actual': maquina.km_actual,
+        'pkUltima_recarga': maquina.pk_ultima_recarga,
+        'ID_Ultima_Recarga': maquina.id_ultima_recarga,
+        'Litros_Ultima': maquina.litros_ultima,
+        'Fecha_Ultima': maquina.fecha_ultima.isoformat() if maquina.fecha_ultima else None,
+
         'OPERADORES': [
             {
                 'id': op.id,
@@ -90,24 +99,20 @@ class MaquinaDetail(Resource):
     @jwt_required()
     @roles_required([ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_INSPECTOR])
     def get(self, maquina_id):
-        """Obtener una máquina específica por ID"""
+        """Obtener una máquina específica por ID con datos de última recarga"""
         try:
-            # Buscar máquina específica
-            result = list_maquinas_use_case.execute()
-            maquinas_domain = result.data
-            
-            # Buscar la máquina por ID
-            maquina = next((m for m in maquinas_domain if m.id == maquina_id), None)
-            
+            # ✅ Usar get_by_id directamente para obtener datos completos incluyendo última recarga
+            maquina = maquinas_repository.get_by_id(maquina_id)
+
             if not maquina:
                 maquinas_ns.abort(404, f"Máquina con ID {maquina_id} no encontrada")
-            
+
             return {
                 'success': True,
                 'data': _domain_to_dict(maquina),
                 'message': 'Máquina obtenida exitosamente'
             }
-            
+
         except Exception as e:
             maquinas_ns.abort(500, f"Error al obtener máquina: {str(e)}")
 

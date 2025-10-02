@@ -5,7 +5,6 @@ from .refs import MaquinaRef, UsuarioRef, ObraRef, ClienteRef
 
 @dataclass(frozen=True)
 class Recarga:
-    # ✅ Campos básicos de la BD
     id: int
     codigo: str
     fecha: Optional[datetime]

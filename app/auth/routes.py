@@ -57,11 +57,15 @@ class Login(Resource):
             "refresh_token": refresh_token,
             "user": {
                 "pkUsuario": user.pkUsuario,
+                "USUARIO_ID": user.USUARIO_ID,
                 "NOMBREUSUARIO": user.NOMBREUSUARIO,
+                "USUARIO": user.USUARIO,
                 "NOMBRE": user.NOMBRE,
                 "APELLIDOS": user.APELLIDOS,
-                "EMAIL": getattr(user, 'EmailUsuario', ''),
-                "ROL": user.ROL
+                "EMAIL": getattr(user, 'EmailUsuario', None),
+                "ROL": user.ROL,
+                "TELEFONO": user.TELEFONO,
+                "RUT": user.RUT
             }
         }
 
@@ -87,11 +91,15 @@ class UserProfile(Resource):
             "success": True,
             "user": {
                 "pkUsuario": user.pkUsuario,
+                "USUARIO_ID": user.USUARIO_ID,
                 "NOMBREUSUARIO": user.NOMBREUSUARIO,
+                "USUARIO": user.USUARIO,
                 "NOMBRE": user.NOMBRE,
                 "APELLIDOS": user.APELLIDOS,
-                "EMAIL": getattr(user, 'EmailUsuario', ''),
-                "ROL": user.ROL
+                "EMAIL": getattr(user, 'EmailUsuario', None),
+                "ROL": user.ROL,
+                "TELEFONO": user.TELEFONO,
+                "RUT": user.RUT
             }
         }
 
@@ -107,3 +115,36 @@ class RefreshToken(Resource):
         current_user_identity = get_jwt_identity()
         new_token = create_access_token(identity=current_user_identity, expires_delta=timedelta(hours=6))
         return {"access_token": new_token}
+
+# ✅ NUEVO - Endpoint para obtener usuario por ID (necesario para operadores)
+@auth_ns.route('/usuarios/<int:user_id>')
+@auth_ns.doc(description='Obtener información de un usuario específico')
+@auth_ns.param('user_id', 'ID del usuario')
+class UserById(Resource):
+    @auth_ns.marshal_with(user_response)
+    @auth_ns.response(200, 'Usuario encontrado')
+    @auth_ns.response(401, 'Token inválido')
+    @auth_ns.response(404, 'Usuario no encontrado')
+    @jwt_required()
+    def get(self, user_id):
+        """Obtener información de un usuario por ID"""
+        user = User.query.get(user_id)
+
+        if not user:
+            auth_ns.abort(404, f"Usuario con ID {user_id} no encontrado")
+
+        return {
+            "success": True,
+            "user": {
+                "pkUsuario": user.pkUsuario,
+                "USUARIO_ID": user.USUARIO_ID,
+                "NOMBREUSUARIO": user.NOMBREUSUARIO,
+                "USUARIO": user.USUARIO,
+                "NOMBRE": user.NOMBRE,
+                "APELLIDOS": user.APELLIDOS,
+                "EMAIL": getattr(user, 'EmailUsuario', None),
+                "ROL": user.ROL,
+                "TELEFONO": user.TELEFONO,
+                "RUT": user.RUT
+            }
+        }

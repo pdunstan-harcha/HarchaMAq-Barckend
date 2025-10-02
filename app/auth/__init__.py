@@ -11,12 +11,16 @@ login_model = auth_ns.model('Login', {
 })
 
 user_model = auth_ns.model('User', {
-    'pkUsuario': fields.Integer(description='ID del usuario'),
-    'NOMBREUSUARIO': fields.String(description='Nombre de usuario'),
-    'NOMBRE': fields.String(description='Nombre'),
-    'APELLIDOS': fields.String(description='Apellidos'),
-    'EMAIL': fields.String(description='Email'),
-    'ROL': fields.String(description='Rol del usuario')
+    'pkUsuario': fields.Integer(description='ID del usuario', example=150),
+    'USUARIO_ID': fields.String(description='ID de usuario (legacy)', example='pdunstan'),
+    'NOMBREUSUARIO': fields.String(description='Nombre de usuario', example='pdunstan'),
+    'USUARIO': fields.String(description='Usuario completo', example='Patricio Dunstan'),
+    'NOMBRE': fields.String(description='Nombre', example='Patricio'),
+    'APELLIDOS': fields.String(description='Apellidos', example='Dunstan'),
+    'EMAIL': fields.String(description='Email', example='pdunstan@example.com'),
+    'ROL': fields.String(description='Rol del usuario', example='Admin superior'),
+    'TELEFONO': fields.String(description='Teléfono', example='+56912345678'),
+    'RUT': fields.String(description='RUT', example='12345678-9')
 })
 
 # Modelo de respuesta del login

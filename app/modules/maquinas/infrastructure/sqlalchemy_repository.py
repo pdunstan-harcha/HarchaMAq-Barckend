@@ -31,6 +31,23 @@ def _to_domain(sa: SAMaquina) -> Maquina:
     sa_estado = getattr(sa, "ESTADO", None)
     sa_id_maquina = getattr(sa, "ID_MAQUINA", None)
 
+    # ✅ NUEVO - Extraer campos de última recarga
+    hr_actual = getattr(sa, "HR_Actual", None)
+    km_actual = getattr(sa, "KM_Actual", None)
+    pk_ultima_recarga = getattr(sa, "pkUltima_recarga", None)
+    id_ultima_recarga = getattr(sa, "ID_Ultima_Recarga", None)
+    litros_ultima = getattr(sa, "Litros_Ultima", None)
+    fecha_ultima = getattr(sa, "Fecha_Ultima", None)
+
+    # 🔍 DEBUG - Mostrar datos de última recarga
+    print(f"🔍 MAPEO MAQUINA {sa_id} - Datos de última recarga:")
+    print(f"   HR_Actual: {hr_actual}")
+    print(f"   KM_Actual: {km_actual}")
+    print(f"   pkUltima_recarga: {pk_ultima_recarga}")
+    print(f"   ID_Ultima_Recarga: {id_ultima_recarga}")
+    print(f"   Litros_Ultima: {litros_ultima}")
+    print(f"   Fecha_Ultima: {fecha_ultima}")
+
     operadores = []
     try:
         if hasattr(sa, 'operadores') and sa.operadores is not None:
@@ -40,7 +57,7 @@ def _to_domain(sa: SAMaquina) -> Maquina:
         operadores = ()
     print(f"✅ DEBUG Mapping - ID: {sa_id}, Nombre: {sa_maquina}, Marca: {sa_marca}")
    
-    return Maquina (
+    return Maquina(
         id=sa_id,
         nombre=sa_maquina,
         marca=sa_marca,
@@ -49,6 +66,13 @@ def _to_domain(sa: SAMaquina) -> Maquina:
         estado=sa_estado,
         id_maquina=sa_id_maquina,
         operadores=operadores,
+        # ✅ NUEVO - Pasar campos de última recarga
+        hr_actual=hr_actual,
+        km_actual=km_actual,
+        pk_ultima_recarga=pk_ultima_recarga,
+        id_ultima_recarga=id_ultima_recarga,
+        litros_ultima=litros_ultima,
+        fecha_ultima=fecha_ultima,
     )
     
     

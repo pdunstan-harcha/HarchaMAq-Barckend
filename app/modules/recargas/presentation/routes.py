@@ -37,17 +37,21 @@ def _domain_to_dict(recarga: Recarga) -> dict:
         'codigo': recarga.codigo,
         'fecha': recarga.fecha.isoformat() if recarga.fecha else None,
         'litros': recarga.litros,
+        'foto': recarga.foto,
         'observaciones': recarga.observaciones,
         'odometro': recarga.odometro,
         'kilometros': recarga.kilometros,
         'fechahora_recarga': recarga.fechahora_recarga.isoformat() if recarga.fechahora_recarga else None,
         'patente': recarga.patente,
         'rut_operador': recarga.rut_operador,
+
+        # Datos de recarga anterior
+        'id_recarga_anterior': recarga.id_recarga_anterior,
         'litros_anterior': recarga.litros_anterior,
         'horometro_anterior': recarga.horometro_anterior,
         'kilometro_anterior': recarga.kilometro_anterior,
         'fecha_anterior': recarga.fecha_anterior.isoformat() if recarga.fecha_anterior else None,
-        
+
         # Referencias como objetos anidados
         'maquina': {
             'id': recarga.maquina.id if recarga.maquina else None,
@@ -55,11 +59,25 @@ def _domain_to_dict(recarga: Recarga) -> dict:
         },
         'usuario': {
             'id': recarga.usuario.id if recarga.usuario else None,
-            'usuario': recarga.usuario.usuario if recarga.usuario else None
+            'usuario': recarga.usuario.usuario if recarga.usuario else None,
+            'usuario_id': recarga.usuario.usuario_id if recarga.usuario else None,
+            'nombre': recarga.usuario.nombre if recarga.usuario else None,
+            'apellidos': recarga.usuario.apellidos if recarga.usuario else None,
+            'rol': recarga.usuario.rol if recarga.usuario else None,
+            'email': recarga.usuario.email if recarga.usuario else None,
+            'telefono': recarga.usuario.telefono if recarga.usuario else None,
+            'rut': recarga.usuario.rut if recarga.usuario else None
         },
         'operador': {
             'id': recarga.operador.id if recarga.operador else None,
-            'usuario': recarga.operador.usuario if recarga.operador else None
+            'usuario': recarga.operador.usuario if recarga.operador else None,
+            'usuario_id': recarga.operador.usuario_id if recarga.operador else None,
+            'nombre': recarga.operador.nombre if recarga.operador else None,
+            'apellidos': recarga.operador.apellidos if recarga.operador else None,
+            'rol': recarga.operador.rol if recarga.operador else None,
+            'email': recarga.operador.email if recarga.operador else None,
+            'telefono': recarga.operador.telefono if recarga.operador else None,
+            'rut': recarga.operador.rut if recarga.operador else None
         },
         'obra': {
             'id': recarga.obra.id if recarga.obra else None,
@@ -68,7 +86,18 @@ def _domain_to_dict(recarga: Recarga) -> dict:
         'cliente': {
             'id': recarga.cliente.id if recarga.cliente else None,
             'nombre': recarga.cliente.nombre if recarga.cliente else None
-        }
+        },
+        'usuario_ultima_modificacion': {
+            'id': recarga.usuario_ultima_modificacion.id if recarga.usuario_ultima_modificacion else None,
+            'usuario': recarga.usuario_ultima_modificacion.usuario if recarga.usuario_ultima_modificacion else None,
+            'usuario_id': recarga.usuario_ultima_modificacion.usuario_id if recarga.usuario_ultima_modificacion else None,
+            'nombre': recarga.usuario_ultima_modificacion.nombre if recarga.usuario_ultima_modificacion else None,
+            'apellidos': recarga.usuario_ultima_modificacion.apellidos if recarga.usuario_ultima_modificacion else None,
+            'rol': recarga.usuario_ultima_modificacion.rol if recarga.usuario_ultima_modificacion else None,
+            'email': recarga.usuario_ultima_modificacion.email if recarga.usuario_ultima_modificacion else None,
+            'telefono': recarga.usuario_ultima_modificacion.telefono if recarga.usuario_ultima_modificacion else None,
+            'rut': recarga.usuario_ultima_modificacion.rut if recarga.usuario_ultima_modificacion else None
+        } if recarga.usuario_ultima_modificacion else None
     }
 
 @recargas_ns.route('/')

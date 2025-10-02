@@ -25,19 +25,27 @@ def _maq_ref(maq: Optional[SAMaquina]) -> Optional[MaquinaRef]:
 def _user_ref(user: Optional[SAUser]) -> Optional[UsuarioRef]:
     if not user:
         return None
-    
+
     # Usar múltiples campos como fallback
     nombre_display = (
-        user.NOMBREUSUARIO or 
-        user.USUARIO or 
+        user.NOMBREUSUARIO or
+        user.USUARIO or
         (f"{user.NOMBRE or ''} {user.APELLIDOS or ''}".strip()) or
-        user.USUARIO_ID or 
+        user.USUARIO_ID or
         f"Usuario {user.pkUsuario}"
     )
-    
+
     return UsuarioRef(
-        id=user.pkUsuario, 
-        usuario=nombre_display
+        id=user.pkUsuario,
+        usuario=nombre_display,
+        # ✅ NUEVO - Incluir todos los campos del usuario
+        usuario_id=user.USUARIO_ID,
+        nombre=user.NOMBRE,
+        apellidos=user.APELLIDOS,
+        rol=user.ROL,
+        email=getattr(user, 'EmailUsuario', None),
+        telefono=user.TELEFONO,
+        rut=user.RUT
     )
 
 def _obra_ref(obra: Optional[SAObra]) -> Optional[ObraRef]:
@@ -91,10 +99,18 @@ def _to_domain(recarga: SARecarga, include_relations: bool = True) -> Recarga:
 class SqlAlchemyRecargaRepository(RecargaRepository):
     
     def listar_paginado(self, params: PaginationParams) -> PaginatedResult:
-        """Listar recargas con paginación y búsqueda - SIN joins complejos, usando lazy loading"""
+        """Listar recargas con paginación y búsqueda - CON joins para cargar relaciones"""
+
+        # ✅ Query base CON joinedload para cargar todas las relaciones
+        query = SARecarga.query.options(
+            joinedload(SARecarga.maquina),
+            joinedload(SARecarga.usuario),
+            joinedload(SARecarga.operador),
+            joinedload(SARecarga.obra),      
+            joinedload(SARecarga.cliente),
+            joinedload(SARecarga.usuario_ultima_modificacion)
+        )
         
-        # Query base SIN joinedload para evitar problemas
-        query = SARecarga.query
         
         # Aplicar filtro de usuario si existe (para roles PETROLERO/OPERADOR)
         if params.user_filter:
@@ -144,68 +160,154 @@ class SqlAlchemyRecargaRepository(RecargaRepository):
     
     def crear(self, payload: dict) -> Recarga:
         """Crear nueva recarga"""
-
-        ultimo = SARecarga.query.order_by(SARecarga.pkRecarga.desc()).first()
-        siguiente_num = (ultimo.pkRecarga if ultimo else 0) + 1
-        codigo = f"RCO{str(siguiente_num).zfill(8)}"
-        
-        print(f"🔵 Creando recarga con código: {codigo}")
-        print(f"🔵 Payload: {payload}")
-        
-        # Convertir 0 a None para campos opcionales
-        def safe_int(value):
-            if value == 0 or value == "0" or value is None:
-                return None
-            return int(value) if value else None
-        
         try:
-            rec = SARecarga(
-                ID_RECARGA=codigo,
-                ID_MAQUINA=payload.get("ID_MAQUINA"),
-                pkMaquina=payload.get("pkMaquina"),
-                USUARIO_ID=payload.get("USUARIO_ID"),
-                pkUsuario=payload.get("pkUsuario"),
-                FECHA=payload.get("FECHA") if payload.get("FECHA") else datetime.datetime.now().date(),
-                FECHAHORA_RECARGA=payload.get("FECHAHORA_RECARGA") if payload.get("FECHAHORA_RECARGA") else datetime.datetime.now(),
-                LITROS=payload.get("LITROS"),
-                FOTO=payload.get("FOTO"),
-                Observaciones=payload.get("OBSERVACIONES"),
-                ODOMETRO=payload.get("ODOMETRO"),
-                KILOMETROS=payload.get("KILOMETROS"),
-                PATENTE=payload.get("PATENTE") if payload.get("PATENTE") != "string" else None,
-                
-                # Manejar campos opcionales - convertir 0 a None
-                pkOperador=safe_int(payload.get("pkOperador")),
-                ID_OPERADOR=payload.get("ID_OPERADOR"),
-                RUT_OPERADOR=payload.get("RUT_OPERADOR") if payload.get("RUT_OPERADOR") != "string" else None,
-                pkObra=safe_int(payload.get("pkObra")),
-                pkCliente=safe_int(payload.get("pkCliente")),
-                OBRA_ID=payload.get("OBRA_ID"),
-                CLIENTE_ID=payload.get("CLIENTE_ID"),
-            )
-            
-            print(f"🔵 Objeto SARecarga creado")
-            
+            codigo = self._generar_codigo()
+            print(f"🔵 Creando recarga con código: {codigo}")
+            print(f"🔵 Payload recibido: {payload}")
+
+            pk_obra, pk_cliente, pk_operador = self._extraer_ids(payload)
+            print("🔵 IDs procesados:")
+            print(f"  - pkObra: {pk_obra}")
+            print(f"  - pkCliente: {pk_cliente}")
+            print(f"  - pkOperador: {pk_operador}")
+
+            rec = self._crear_objeto_recarga(payload, codigo, pk_obra, pk_cliente, pk_operador)
+            print("🔵 Objeto SARecarga creado con:")
+            print(f"  - pkObra: {rec.pkObra}")
+            print(f"  - pkCliente: {rec.pkCliente}")
+
             db.session.add(rec)
-            print(f"🔵 Agregado a sesión")
-            
             db.session.commit()
-            print(f"🔵 Commit realizado")
-            
             db.session.refresh(rec)
-            print(f"🔵 Refresh realizado, pkRecarga: {rec.pkRecarga}")
-            
-            result = _to_domain(rec, include_relations=False)
-            print(f"🔵 Convertido a dominio: {result}")
-            
+            print(f"🔵 Commit y refresh realizado, pkRecarga: {rec.pkRecarga}")
+
+            # ✅ NUEVO - Actualizar tabla MAQUINAS con datos de esta recarga como última recarga
+            self._actualizar_maquina_ultima_recarga(rec)
+
+            rec_with_relations = self._recargar_con_relaciones(rec.pkRecarga)
+            self._imprimir_relaciones(rec_with_relations)
+
+            result = _to_domain(rec_with_relations, include_relations=True)
+            print("🔵 Convertido a dominio con relaciones")
             return result
-            
+
         except Exception as e:
             print(f"❌ ERROR en crear(): {str(e)}")
             import traceback
             traceback.print_exc()
             db.session.rollback()
             raise
+
+    def _generar_codigo(self) -> str:
+        ultimo = SARecarga.query.order_by(SARecarga.pkRecarga.desc()).first()
+        siguiente_num = (ultimo.pkRecarga if ultimo else 0) + 1
+        return f"RCO{str(siguiente_num).zfill(8)}"
+
+    def _safe_int(self, value):
+        """Convertir a int de forma segura, permitiendo 0 como valor válido"""
+        if value is None or value == "":
+            return None
+        try:
+            parsed = int(value)
+            # ✅ Retornar None solo si es el string "0", pero permitir el integer 0
+            if parsed == 0 and isinstance(value, str):
+                return None
+            return parsed
+        except (ValueError, TypeError):
+            return None
+
+    def _safe_str(self, value):
+        if value is None or value == "" or value == "string":
+            return None
+        return str(value).strip()
+
+    def _extraer_ids(self, payload):
+        pk_obra = self._safe_int(payload.get("pkObra") or payload.get("OBRA_ID") or payload.get("OBRA"))
+        pk_cliente = self._safe_int(payload.get("pkCliente") or payload.get("CLIENTE_ID") or payload.get("CLIENTE"))
+        pk_operador = self._safe_int(payload.get("pkOperador") or payload.get("OPERADOR_ID"))
+        return pk_obra, pk_cliente, pk_operador
+
+    def _crear_objeto_recarga(self, payload, codigo, pk_obra, pk_cliente, pk_operador):
+        return SARecarga(
+            ID_RECARGA=codigo,
+            ID_MAQUINA=payload.get("ID_MAQUINA"),
+            pkMaquina=payload.get("pkMaquina"),
+            USUARIO_ID=payload.get("USUARIO_ID"),
+            pkUsuario=payload.get("pkUsuario"),
+            FECHA=payload.get("FECHA") if payload.get("FECHA") else datetime.datetime.now().date(),
+            FECHAHORA_RECARGA=payload.get("FECHAHORA_RECARGA") if payload.get("FECHAHORA_RECARGA") else datetime.datetime.now(),
+            LITROS=payload.get("LITROS"),
+            FOTO=self._safe_str(payload.get("FOTO")),
+            Observaciones=self._safe_str(payload.get("OBSERVACIONES")),
+            ODOMETRO=self._safe_int(payload.get("ODOMETRO")),
+            KILOMETROS=self._safe_int(payload.get("KILOMETROS")),
+            PATENTE=self._safe_str(payload.get("PATENTE")),
+            pkOperador=pk_operador,
+            ID_OPERADOR=payload.get("ID_OPERADOR"),
+            RUT_OPERADOR=self._safe_str(payload.get("RUT_OPERADOR")),
+            pkObra=pk_obra,
+            pkCliente=pk_cliente,
+            OBRA_ID=str(pk_obra) if pk_obra else None,
+            CLIENTE_ID=str(pk_cliente) if pk_cliente else None,
+
+            # ✅ NUEVO - Datos de recarga anterior (historial)
+            pkRecarga_anterior=self._safe_int(payload.get("pkRecarga_anterior")),
+            ID_Recarga_Anterior=self._safe_str(payload.get("ID_Recarga_Anterior")),
+            Litros_Anterior=self._safe_int(payload.get("Litros_Anterior")),
+            Horometro_Anterior=self._safe_int(payload.get("Horometro_Anterior")),
+            Kilometro_Anterior=self._safe_int(payload.get("Kilometro_Anterior")),
+            Fecha_Anterior=payload.get("Fecha_Anterior"),
+        )
+
+    def _actualizar_maquina_ultima_recarga(self, recarga: SARecarga):
+        """Actualizar la tabla MAQUINAS con los datos de la última recarga"""
+        try:
+            maquina = SAMaquina.query.get(recarga.pkMaquina)
+            if not maquina:
+                print(f"⚠️ Máquina {recarga.pkMaquina} no encontrada para actualizar")
+                return
+
+            # Actualizar campos de última recarga en la tabla MAQUINAS
+            maquina.HR_Actual = recarga.ODOMETRO  # Horómetro actual
+            maquina.KM_Actual = recarga.KILOMETROS  # Kilómetros actuales
+            maquina.pkUltima_recarga = recarga.pkRecarga  # ID de esta recarga
+            maquina.ID_Ultima_Recarga = recarga.ID_RECARGA  # Código de esta recarga
+            maquina.Litros_Ultima = recarga.LITROS  # Litros de esta recarga
+            maquina.Fecha_Ultima = recarga.FECHAHORA_RECARGA  # Fecha de esta recarga
+
+            db.session.commit()
+            print(f"✅ Máquina {maquina.pkMaquina} actualizada con última recarga {recarga.pkRecarga}")
+            print(f"   - HR_Actual: {maquina.HR_Actual}")
+            print(f"   - KM_Actual: {maquina.KM_Actual}")
+            print(f"   - Litros_Ultima: {maquina.Litros_Ultima}")
+
+        except Exception as e:
+            print(f"❌ ERROR al actualizar máquina: {str(e)}")
+            db.session.rollback()
+
+    def _recargar_con_relaciones(self, pk_recarga):
+        return (
+            SARecarga.query
+            .options(
+                joinedload(SARecarga.maquina),
+                joinedload(SARecarga.usuario),
+                joinedload(SARecarga.operador),
+                joinedload(SARecarga.obra),
+                joinedload(SARecarga.cliente),
+                joinedload(SARecarga.usuario_ultima_modificacion)
+            )
+            .filter(SARecarga.pkRecarga == pk_recarga)
+            .first()
+        )
+
+    def _imprimir_relaciones(self, rec_with_relations):
+        print(f"🔵 Recarga recargada con relaciones:")
+        print(f"  - Tiene obra: {rec_with_relations.obra is not None}")
+        print(f"  - Tiene cliente: {rec_with_relations.cliente is not None}")
+        if rec_with_relations.obra:
+            print(f"  - Obra nombre: {rec_with_relations.obra.OBRA}")
+        if rec_with_relations.cliente:
+            print(f"  - Cliente nombre: {rec_with_relations.cliente.CLIENTE}")
     
     def actualizar(self, recarga_id: int, payload: dict) -> Optional[Recarga]:
         """Actualizar una recarga existente"""
