@@ -93,9 +93,14 @@ recarga_input = recargas_ns.model('RecargaInput', {
     'Fecha_Anterior': fields.DateTime(description='Fecha de la recarga anterior', example='2025-06-25T17:03:39')
 })
 
+create_recarga_data = recargas_ns.model('CreateRecargaData', {
+    'id': fields.Integer(required=True, description='ID de la recarga creada', example=3242),
+    'codigo': fields.String(required=True, description='Código de la recarga creada', example='RCO00003242')
+})
+
 create_recarga_response = recargas_ns.model('CreateRecargaResponse', {
     'success': fields.Boolean(required=True, description='Indica si la operación fue exitosa'),
-    'data': fields.Raw(description='Datos de la recarga creada'),
+    'data': fields.Nested(create_recarga_data, description='Datos de la recarga creada'),
     'message': fields.String(required=True, description='Mensaje de confirmación')
 })
 
