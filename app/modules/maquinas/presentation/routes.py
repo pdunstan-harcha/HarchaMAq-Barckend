@@ -1,7 +1,7 @@
 from flask_restx import Resource
 from flask import request
 from flask_jwt_extended import jwt_required
-from app.security.roles import roles_required, ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_INSPECTOR
+from app.security.roles import ROLE_OPERADOR, ROLE_PETROLERO,ROLE_PETROLERO, ROLE_PORTERO roles_required, ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_INSPECTOR, ROLE_PORTERO, ROLE_OPERADOR
 from .api_namespace import (
     maquinas_ns, 
     maquina_input, 
@@ -69,7 +69,7 @@ class MaquinasList(Resource):
     @maquinas_ns.response(401, 'Token inválido')
     @maquinas_ns.response(403, 'Sin permisos suficientes')
     @jwt_required()
-    @roles_required([ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_INSPECTOR])
+    @roles_required([ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_INSPECTOR, ROLE_OPERADOR, ROLE_PETROLERO, ROLE_PORTERO])
     def get(self):
         """Obtener lista de todas las máquinas usando arquitectura DDD"""
         try:
@@ -97,7 +97,7 @@ class MaquinaDetail(Resource):
     @maquinas_ns.response(401, 'Token inválido')
     @maquinas_ns.response(403, 'Sin permisos suficientes')
     @jwt_required()
-    @roles_required([ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_INSPECTOR])
+    @roles_required([ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_INSPECTOR, ROLE_OPERADOR, ROLE_PETROLERO, ROLE_PORTERO])
     def get(self, maquina_id):
         """Obtener una máquina específica por ID con datos de última recarga"""
         try:
@@ -124,7 +124,7 @@ class MaquinaOperadores(Resource):
     @maquinas_ns.response(401, 'Token inválido')
     @maquinas_ns.response(403, 'Sin permisos suficientes')
     @jwt_required()
-    @roles_required([ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_INSPECTOR])
+    @roles_required([ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_INSPECTOR, ROLE_OPERADOR, ROLE_PETROLERO, ROLE_PORTERO])
     def get(self, maquina_id):
         """Obtener operadores asignados a una máquina específica"""
         try:

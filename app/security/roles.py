@@ -9,7 +9,7 @@ ROLE_SUPER_ADMIN = "SUPER ADMIN"
 ROLE_INSPECTOR = "INSPECTOR"
 ROLE_PETROLERO = "PETROLERO"
 ROLE_OPERADOR = "OPERADOR"
-ROLE_OPERADOR = "OPERADOR"
+ROLE_PORTERO = "PORTERO"
 
 def normalize_role(role: str) -> str:
     """Normalize role for comparison - MAPEO ESPECÍFICO PARA TU BD"""
@@ -29,6 +29,8 @@ def normalize_role(role: str) -> str:
         return ROLE_PETROLERO
     elif "OPERADOR" in role_clean:
         return ROLE_OPERADOR
+    elif "PORTERO" in role_clean:
+        return ROLE_PORTERO
     
     # Si no encuentra mapeo, devolver como está (uppercase)
     return role_clean
