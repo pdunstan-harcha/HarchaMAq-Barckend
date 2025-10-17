@@ -1,7 +1,15 @@
 from flask_restx import Resource
 from flask import request
 from flask_jwt_extended import jwt_required
-from app.security.roles import ROLE_OPERADOR, ROLE_PETROLERO,ROLE_PETROLERO, ROLE_PORTERO roles_required, ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_INSPECTOR, ROLE_PORTERO, ROLE_OPERADOR
+from app.security.roles import (
+    ROLE_OPERADOR,
+    ROLE_PETROLERO,
+    ROLE_PORTERO,
+    ROLE_ADMIN,
+    ROLE_SUPER_ADMIN,
+    ROLE_INSPECTOR,
+    roles_required,
+)
 from .api_namespace import (
     maquinas_ns, 
     maquina_input, 
